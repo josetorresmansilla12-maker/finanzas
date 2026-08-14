@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mis Finanzas — Gestor Personal</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1f7a5c" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="icon-apple-touch.png" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>💰 Mis Finanzas 💰</h1>
+    <p class="subtitle">Tarjetas, compras, deudas y estadísticas</p>
+    <div class="header-actions">
+      <button type="button" id="save-backup-btn" class="btn btn-header">💾 Guardar respaldo (.json)</button>
+      <label for="import-file-input" class="btn btn-header file-label">📂 Importar respaldo (.json)</label>
+      <input type="file" id="import-file-input" accept="application/json" class="hidden" />
+      <button type="button" id="open-trash-btn" class="btn btn-header">🗑️ Papelera<span id="trash-count-badge"></span></button>
+    </div>
+  </header>
+
+  <div class="app-alerts" id="app-alerts"></div>
+
+  <nav class="tabs" id="tabs">
+    <button type="button" class="tab-btn active" id="tab-compras-btn" data-tab="compras">Compras</button>
+    <button type="button" class="tab-btn" id="tab-deudas-btn" data-tab="deudas">Deudas</button>
+    <button type="button" class="tab-btn" id="tab-deuda-tarjetas-btn" data-tab="deuda-tarjetas">Deuda Tarjetas</button>
+    <button type="button" class="tab-btn" id="tab-estadisticas-btn" data-tab="estadisticas">Estadísticas</button>
+    <button type="button" class="tab-btn" id="tab-sueldo-btn" data-tab="sueldo">Mi Sueldo</button>
+    <button type="button" class="tab-btn" id="tab-tarjetas-btn" data-tab="tarjetas">Tarjetas</button>
+  </nav>
+
+  <main class="container">
+
+    <!-- ===================== TAB: COMPRAS ===================== -->
+    <section id="tab-compras" class="tab-panel">
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Total gastado (periodo)</span>
+          <span class="card-value" id="compras-total-gastado">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Gastos fijos</span>
+          <span class="card-value" id="compras-total-fijos">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Suscripciones</span>
+          <span class="card-value" id="compras-total-suscripciones">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Compras variables</span>
+          <span class="card-value" id="compras-total-variables">$0</span>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 id="form-title-compra">Registrar compra</h2>
+        <p class="lede-hint">Solo el monto es obligatorio. Lo que no aplique a esta compra puedes saltarlo.</p>
+        <form id="compra-form" novalidate>
+          <input type="hidden" id="compra-id" />
+
+          <div class="field sale-type-field">
+            <label>Tipo de pago</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="compra-type" value="unico" checked />
+                Pago único
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="compra-type" value="cuotas" />
+                En cuotas
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="compra-categoria">Categoría</label>
+            <select id="compra-categoria"></select>
+          </div>
+
+          <div class="field hidden" id="compra-categoria-other-field">
+            <label for="compra-categoria-other">Especifica la categoría <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="compra-categoria-other" placeholder="Ej: Ferretería" />
+            <span class="error-msg" id="error-compra-categoria-other"></span>
+          </div>
+
+          <div class="field hidden" id="compra-auto-field">
+            <label>¿De qué auto es este gasto?</label>
+            <div class="radio-group" id="compra-auto-options"></div>
+          </div>
+
+          <div class="field">
+            <label for="compra-descripcion">Descripción <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="compra-descripcion" placeholder="Ej: Supermercado Jumbo" />
+          </div>
+
+          <div class="field">
+            <label for="compra-monto">Monto total <span class="label-hint">(obligatorio)</span></label>
+            <input type="number" id="compra-monto" placeholder="Ej: 45000" min="0" step="1" required />
+            <span class="error-msg" id="error-compra-monto"></span>
+          </div>
+
+          <div class="field">
+            <label for="compra-fecha">Fecha de la compra <span class="label-hint">(si la dejas vacía se usa hoy)</span></label>
+            <input type="date" id="compra-fecha" />
+            <span class="error-msg" id="error-compra-fecha"></span>
+          </div>
+
+          <div class="field hidden" id="compra-cuotas-field">
+            <label for="compra-cuotas-count">Cantidad de cuotas</label>
+            <input type="number" id="compra-cuotas-count" placeholder="Ej: 3" min="2" step="1" />
+            <span class="error-msg" id="error-compra-cuotas-count"></span>
+          </div>
+
+          <div class="field hidden" id="compra-interes-field">
+            <label class="radio-option interes-checkbox-option">
+              <input type="checkbox" id="compra-tiene-interes" />
+              ¿Tiene interés?
+            </label>
+          </div>
+
+          <div class="field">
+            <label for="compra-fecha-pago">Fecha de pago / vencimiento <span class="label-hint">(opcional — se puede sugerir sola)</span></label>
+            <input type="date" id="compra-fecha-pago" />
+          </div>
+
+          <div class="field">
+            <label for="compra-metodo-pago">Método de pago <span class="label-hint">(opcional)</span></label>
+            <select id="compra-metodo-pago"></select>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-suscripcion-field">
+            <label class="radio-option interes-checkbox-option">
+              <input type="checkbox" id="compra-suscripcion-repite" />
+              ¿Se repite mensualmente?
+            </label>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-suscripcion-detalle-field">
+            <label>¿Hasta cuándo se repite?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="compra-suscripcion-modo" value="fecha" checked />
+                Hasta una fecha
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="compra-suscripcion-modo" value="meses" />
+                Por cantidad de meses
+              </label>
+            </div>
+            <div class="suscripcion-detalle-inputs">
+              <input type="date" id="compra-suscripcion-hasta-fecha" />
+              <input type="number" id="compra-suscripcion-meses" placeholder="Ej: 6" min="2" step="1" class="hidden" />
+            </div>
+            <span class="error-msg" id="error-compra-suscripcion"></span>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-fijo-recordatorio-field">
+            <label for="compra-fijo-fecha-pago">Fecha de pago de este gasto fijo <span class="label-hint">(opcional — queda guardada como recordatorio mensual)</span></label>
+            <input type="date" id="compra-fijo-fecha-pago" />
+            <span class="label-hint" id="compra-fijo-recordatorio-hint"></span>
+          </div>
+
+          <div class="field">
+            <label for="compra-comprador">¿Quién realiza esta compra?</label>
+            <select id="compra-comprador"></select>
+            <span class="label-hint">Se administra en Tarjetas → Personas.</span>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-comprador-otro-field">
+            <label for="compra-comprador-otro">¿Quién? <span class="label-hint">(opcional — para alguien que no está en tu lista)</span></label>
+            <input type="text" id="compra-comprador-otro" list="personas-conocidas-list" placeholder="Ej: Un amigo, mi jefe…" />
+            <label class="radio-option interes-checkbox-option">
+              <input type="checkbox" id="compra-comprador-otro-stats" />
+              Llevar registro de su dinero en Estadísticas
+            </label>
+            <span class="label-hint">Déjalo sin marcar si solo quieres registrar la deuda y no un panel "Dinero de esta persona".</span>
+          </div>
+
+          <div class="field">
+            <label>¿Esta compra es para el hogar?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="compra-hogar" value="si" />
+                Sí — es un aporte al hogar
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="compra-hogar" value="no" checked />
+                No — es un gasto personal
+              </label>
+            </div>
+            <span class="label-hint" id="compra-hogar-hint"></span>
+          </div>
+
+          <div class="field">
+            <label for="compra-acreedor">¿A quién se le debe?</label>
+            <select id="compra-acreedor"></select>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-persona-field">
+            <label for="compra-persona">¿Quién me debe este monto? <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="compra-persona" list="personas-conocidas-list" placeholder="Ej: Colun" />
+            <span class="error-msg" id="error-compra-persona"></span>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-origen-field">
+            <label>¿Con qué dinero pagas esta compra?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="compra-origen" value="sueldo" checked />
+                Con mi sueldo
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="compra-origen" value="otro" />
+                Con otro dinero
+              </label>
+            </div>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-sobre-field">
+            <label for="compra-sobre">¿De qué parte de tu sueldo sale? <span class="label-hint">(déjalo en automático si no quieres pensarlo)</span></label>
+            <select id="compra-sobre"></select>
+          </div>
+
+          <div class="field owner-field">
+            <label for="compra-notas">Notas <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="compra-notas" placeholder="Ej: Compra de fin de mes" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="submit-compra-btn" class="btn btn-primary">Registrar compra</button>
+            <button type="button" id="cancel-edit-compra-btn" class="btn btn-secondary hidden">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Filtros</h2>
+        </div>
+        <div class="ventas-filters">
+          <input type="search" id="compras-filter-texto" class="compras-buscador" placeholder="🔎 Buscar por descripción, categoría o nota…" />
+          <select id="compras-filter-tarjeta">
+            <option value="">Todos los métodos de pago</option>
+          </select>
+          <select id="compras-filter-comprador">
+            <option value="">Todos los compradores</option>
+          </select>
+          <select id="compras-filter-acreedor">
+            <option value="">Todas las deudas</option>
+          </select>
+          <div class="ventas-filter-dates">
+            <label for="compras-filter-from">Desde</label>
+            <input type="date" id="compras-filter-from" />
+            <label for="compras-filter-to">Hasta</label>
+            <input type="date" id="compras-filter-to" />
+            <button type="button" id="compras-filter-dates-clear" class="btn btn-outline btn-small hidden">Limpiar fechas</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🏠 Gastos fijos y suscripciones</h2>
+          <div class="table-actions">
+            <button type="button" id="export-fijos-csv-btn" class="btn btn-outline">Exportar Excel (.csv)</button>
+          </div>
+        </div>
+        <p class="lede-hint">Cuentas del hogar, alimentos y suscripciones/streaming.</p>
+        <div id="fijos-months-wrapper"></div>
+        <p id="fijos-empty-state" class="empty-state hidden">Aún no hay gastos fijos registrados.</p>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🛍️ Compras variables</h2>
+          <div class="table-actions">
+            <button type="button" id="export-variables-csv-btn" class="btn btn-outline">Exportar Excel (.csv)</button>
+          </div>
+        </div>
+        <p class="lede-hint">Ropa, tecnología, ocio, autos y otras compras variables.</p>
+        <div id="variables-months-wrapper"></div>
+        <p id="variables-empty-state" class="empty-state hidden">Aún no hay compras variables registradas.</p>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: DEUDAS ===================== -->
+    <section id="tab-deudas" class="tab-panel hidden">
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Me deben en total</span>
+          <span class="card-value" id="me-deben-pendiente-resumen">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Debo en total</span>
+          <span class="card-value" id="deudas-mias-pendiente-resumen">$0</span>
+        </div>
+      </section>
+
+      <section class="table-section" id="saldo-neto-section">
+        <div class="table-header">
+          <h2>⚖️ Saldo neto por persona</h2>
+        </div>
+        <p class="lede-hint">Cruza lo que cada uno te debe con lo que tú le debes, para saber de una sola mirada quién queda debiendo.</p>
+        <div id="saldo-neto-list"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🤝 Me deben</h2>
+        </div>
+        <p class="lede-hint">Gastos que pagaste tú y están pendientes de reembolso, por persona.</p>
+        <p id="me-deben-empty-state" class="empty-state hidden">Aún no hay nadie que te deba dinero.</p>
+        <div id="me-deben-list"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>💳 Lo que debo</h2>
+        </div>
+        <p class="lede-hint">Deudas tuyas con otras personas (por ejemplo compras con la tarjeta de mamá), menos lo que ya devolviste. Baja con el tiempo hasta llegar a cero.</p>
+        <p id="deudas-mias-empty-state" class="empty-state hidden">No tienes deudas registradas con otras personas.</p>
+        <div id="deudas-mias-list"></div>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: DEUDA TARJETAS ===================== -->
+    <section id="tab-deuda-tarjetas" class="tab-panel hidden">
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Debo en tarjetas (total)</span>
+          <span class="card-value" id="tarjetas-deuda-total-resumen">$0</span>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>💳 Deuda de tarjetas de crédito</h2>
+        </div>
+        <p class="lede-hint">Cada compra pagada con una tarjeta propia (Scotiabank, Santander, etc.) se suma automáticamente a la deuda de esa tarjeta, sin importar para quién haya sido la compra. Las tarjetas de otras personas no aparecen aquí.</p>
+        <p id="tarjetas-deuda-empty-state" class="empty-state hidden">Agrega una tarjeta propia en la pestaña Tarjetas para ver su deuda aquí.</p>
+        <div id="tarjetas-deuda-list"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>📁 Estados de cuenta pasados</h2>
+          <div class="table-actions">
+            <select id="tarjetas-archivo-range"></select>
+          </div>
+        </div>
+        <p class="lede-hint">Cada vez que marcas una tarjeta como pagada, sus compras y abonos de ese periodo salen de la vista activa y quedan archivados aquí, ordenados mes a mes.</p>
+        <p id="tarjetas-archivo-empty" class="empty-state hidden">Todavía no hay estados de cuenta cerrados.</p>
+        <div id="tarjetas-archivo-list"></div>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: ESTADÍSTICAS ===================== -->
+    <section id="tab-estadisticas" class="tab-panel hidden">
+      <div class="estad-period-field">
+        <label for="estad-period-select">Periodo</label>
+        <select id="estad-period-select"></select>
+      </div>
+
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Total gastado</span>
+          <span class="card-value" id="estad-total-gastado">$0</span>
+          <span class="card-delta" id="estad-delta-gastado"></span>
+        </div>
+        <div class="card">
+          <span class="card-label">De tu bolsillo</span>
+          <span class="card-value" id="estad-total-mio">$0</span>
+          <span class="card-delta" id="estad-delta-mio"></span>
+        </div>
+        <div class="card">
+          <span class="card-label">Gastos fijos</span>
+          <span class="card-value" id="estad-total-fijos">$0</span>
+          <span class="card-delta" id="estad-delta-fijos"></span>
+        </div>
+        <div class="card">
+          <span class="card-label">Compras variables</span>
+          <span class="card-value" id="estad-total-variables">$0</span>
+          <span class="card-delta" id="estad-delta-variables"></span>
+        </div>
+        <div class="card">
+          <span class="card-label">Debo a otras personas</span>
+          <span class="card-value" id="estad-debo-personas">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Me deben</span>
+          <span class="card-value" id="estad-me-deben">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Debo en tarjetas</span>
+          <span class="card-value" id="estad-debo-tarjetas">$0</span>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🏠 Aportes al Hogar</h2>
+          <div class="table-actions">
+            <select id="estad-aportes-range"></select>
+          </div>
+        </div>
+        <p class="lede-hint">Todo lo destinado a la casa (cuentas, alimentación, gastos comunes), desglosado por quién lo aportó. Puedes filtrar por un rango que se mueve solo (últimos 30 días, 3 o 6 meses) o elegir un mes concreto del calendario.</p>
+        <div id="estad-aportes-participacion"></div>
+        <p id="estad-aportes-hogar-empty" class="empty-state hidden">Todavía no hay aportes al hogar en el rango elegido.</p>
+        <div id="estad-aportes-hogar"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>👛 Gastos personales de otras personas</h2>
+        </div>
+        <p class="lede-hint">Compras propias de cada persona, que no son para la casa. Es solo registro: no generan deuda ni entran a los aportes del hogar.</p>
+        <p id="estad-personales-terceros-empty" class="empty-state hidden">Todavía no hay gastos personales de otras personas registrados.</p>
+        <div id="estad-personales-terceros"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Tendencia de gastos fijos</h2>
+          <div class="table-actions">
+            <select id="estad-trend-range">
+              <option value="6">Últimos 6 meses</option>
+              <option value="12" selected>Últimos 12 meses</option>
+            </select>
+          </div>
+        </div>
+        <p class="lede-hint">Sin nada marcado se muestra el total de gastos fijos. Marca una o más categorías para comparar su tendencia por separado (ej: agua vs. luz vs. gas).</p>
+        <div class="trend-category-actions">
+          <button type="button" id="trend-category-select-all" class="btn btn-outline btn-small">Marcar todo</button>
+          <button type="button" id="trend-category-select-none" class="btn btn-outline btn-small">Desmarcar todo</button>
+        </div>
+        <div class="trend-category-picker" id="estad-trend-category-picker"></div>
+        <div id="estad-trend-chart" class="trend-chart-wrap"></div>
+        <div id="estad-trend-legend" class="trend-legend"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🧾 Cuentas del mes que faltan por pagar</h2>
+        </div>
+        <p class="lede-hint">Compara los recordatorios que configuraste con lo que ya registraste este mes.</p>
+        <p id="estad-pendientes-empty" class="empty-state hidden">Estás al día con las cuentas que tienen recordatorio.</p>
+        <div id="estad-pendientes-wrapper"></div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Gasto por categoría (periodo)</h2>
+        </div>
+        <div id="estad-categoria-wrapper"></div>
+        <p id="estad-categoria-empty" class="empty-state hidden">No hay compras registradas en este periodo.</p>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🚗 Gasto por auto</h2>
+        </div>
+        <p class="lede-hint">Todo lo de la categoría Autos, separado por vehículo.</p>
+        <p id="estad-autos-empty" class="empty-state hidden">No hay gastos de auto registrados en este periodo.</p>
+        <div id="estad-autos-wrapper"></div>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: MI SUELDO ===================== -->
+    <section id="tab-sueldo" class="tab-panel hidden">
+      <p class="lede-hint">Registro independiente de tus ingresos (sueldo e ingresos extra). No se mezcla con las demás finanzas del hogar ni con las tarjetas.</p>
+
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Total ingresos registrados</span>
+          <span class="card-value" id="sueldo-total-periodo">$0</span>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 id="form-title-sueldo">Registrar ingreso</h2>
+        <form id="sueldo-form" novalidate>
+          <input type="hidden" id="sueldo-id" />
+
+          <div class="field sale-type-field">
+            <label>Tipo de movimiento</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="sueldo-origen" value="sueldo" checked />
+                Sueldo fijo
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="sueldo-origen" value="extra" />
+                Ingreso extra (venta, ocasional…)
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="sueldo-origen" value="retiro" />
+                Retiro (de tarjeta a efectivo)
+              </label>
+            </div>
+            <span class="label-hint" id="sueldo-origen-hint"></span>
+          </div>
+
+          <div class="field" id="sueldo-destino-field">
+            <label>¿Dónde queda este dinero?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="sueldo-destino" value="tarjeta" checked />
+                En la tarjeta / cuenta
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="sueldo-destino" value="efectivo" />
+                En efectivo
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="sueldo-fecha">Fecha</label>
+            <input type="date" id="sueldo-fecha" required />
+            <span class="error-msg" id="error-sueldo-fecha"></span>
+          </div>
+
+          <div class="field">
+            <label for="sueldo-monto">Monto</label>
+            <input type="number" id="sueldo-monto" placeholder="Ej: 850000" min="0" step="1" required />
+            <span class="error-msg" id="error-sueldo-monto"></span>
+          </div>
+
+          <div class="field owner-field">
+            <label for="sueldo-concepto">Concepto <span class="label-hint">(opcional, ej: "Sueldo agosto", "Venta bici")</span></label>
+            <input type="text" id="sueldo-concepto" placeholder="Ej: Sueldo agosto" />
+          </div>
+
+          <div class="field owner-field">
+            <label for="sueldo-notas">Notas <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="sueldo-notas" placeholder="Ej: Depositado en cuenta RUT" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="submit-sueldo-btn" class="btn btn-primary">Registrar ingreso</button>
+            <button type="button" id="cancel-edit-sueldo-btn" class="btn btn-secondary hidden">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Ingresos registrados</h2>
+        </div>
+        <p id="sueldo-empty-state" class="empty-state hidden">Aún no has registrado ningún ingreso.</p>
+        <div id="sueldo-months-wrapper"></div>
+      </section>
+
+      <!-- ---------- Estadísticas del sueldo ---------- -->
+      <section class="table-section">
+        <div class="table-header">
+          <h2>📊 Estadísticas de mi sueldo</h2>
+          <div class="table-actions">
+            <select id="sueldo-period-select"></select>
+          </div>
+        </div>
+
+        <section class="summary-cards">
+          <div class="card">
+            <span class="card-label">Sueldo fijo</span>
+            <span class="card-value" id="sueldo-stat-fijo">$0</span>
+          </div>
+          <div class="card">
+            <span class="card-label">Ingresos extra</span>
+            <span class="card-value" id="sueldo-stat-extra">$0</span>
+          </div>
+          <div class="card">
+            <span class="card-label">Fondo total</span>
+            <span class="card-value" id="sueldo-stat-total">$0</span>
+          </div>
+          <div class="card">
+            <span class="card-label">Gastado desde el sueldo</span>
+            <span class="card-value" id="sueldo-stat-gastado">$0</span>
+          </div>
+          <div class="card">
+            <span class="card-label">Disponible</span>
+            <span class="card-value" id="sueldo-stat-disponible">$0</span>
+          </div>
+        </section>
+
+        <h3 class="subsection-title">Dónde está tu plata ahora</h3>
+        <p class="lede-hint">Saldo acumulado de todos los periodos. Los retiros mueven dinero de la tarjeta al efectivo, y cada compra personal descuenta de la billetera con que la pagaste.</p>
+        <section class="summary-cards">
+          <div class="card">
+            <span class="card-label">Saldo en tarjeta / cuenta</span>
+            <span class="card-value" id="sueldo-saldo-tarjeta">$0</span>
+          </div>
+          <div class="card">
+            <span class="card-label">Saldo en efectivo</span>
+            <span class="card-value" id="sueldo-saldo-efectivo">$0</span>
+          </div>
+        </section>
+
+        <h3 class="subsection-title">Distribución que quiero darle al sueldo</h3>
+        <p class="lede-hint">Define qué porcentaje quieres destinar a cada cosa y la app calcula cuánto es en dinero. El total debería sumar 100%.</p>
+        <div id="distribucion-rows"></div>
+        <div class="distribucion-actions">
+          <button type="button" id="distribucion-add-btn" class="btn btn-outline btn-small">➕ Agregar categoría</button>
+          <span id="distribucion-total-hint" class="label-hint"></span>
+        </div>
+
+        <div class="pie-compare">
+          <div class="pie-compare-col">
+            <h4 class="pie-title">Distribución planificada</h4>
+            <div class="pie-layout">
+              <div id="sueldo-pie-chart" class="pie-chart-wrap"></div>
+              <div id="sueldo-pie-legend" class="pie-legend"></div>
+            </div>
+          </div>
+          <div class="pie-compare-col">
+            <h4 class="pie-title">Gastos reales</h4>
+            <div class="pie-layout">
+              <div id="sueldo-pie-real-chart" class="pie-chart-wrap"></div>
+              <div id="sueldo-pie-real-legend" class="pie-legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subsection-title">Planificado vs. real, sobre por sobre</h3>
+        <p class="lede-hint">Cuánto tenías asignado a cada cosa y cuánto llevas usado. El ahorro se llena con lo que te sobra, no con gastos.</p>
+        <div id="sueldo-sobres-wrapper"></div>
+
+        <h3 class="subsection-title">Flujo de gastos pagados con el sueldo</h3>
+        <p class="lede-hint">Solo compras personales tuyas. Los gastos del hogar no entran acá: el sueldo no los cubre.</p>
+        <p id="sueldo-flujo-empty" class="empty-state hidden">Todavía no hay compras personales pagadas con el sueldo en este periodo.</p>
+        <div id="sueldo-flujo-wrapper"></div>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: TARJETAS ===================== -->
+    <section id="tab-tarjetas" class="tab-panel hidden">
+      <section class="summary-cards">
+        <div class="card">
+          <span class="card-label">Tarjetas registradas</span>
+          <span class="card-value" id="tarjetas-total">0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Próximos vencimientos</span>
+          <div id="tarjetas-proximos-list" class="tarjetas-proximos-list"></div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 id="form-title-tarjeta">Agregar tarjeta</h2>
+        <form id="tarjeta-form" novalidate>
+          <input type="hidden" id="tarjeta-id" />
+
+          <div class="field">
+            <label for="tarjeta-nombre">Nombre de la tarjeta</label>
+            <input type="text" id="tarjeta-nombre" placeholder="Ej: Falabella Mastercard" required />
+            <span class="error-msg" id="error-tarjeta-nombre"></span>
+          </div>
+
+          <div class="field">
+            <label for="tarjeta-owner">¿De quién es la tarjeta?</label>
+            <select id="tarjeta-owner"></select>
+            <span class="label-hint">Solo las tarjetas propias generan deuda con el banco a tu nombre.</span>
+          </div>
+
+          <div class="field">
+            <label for="tarjeta-ultimos4">Últimos 4 dígitos <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="tarjeta-ultimos4" placeholder="Ej: 1234" maxlength="4" inputmode="numeric" />
+          </div>
+
+          <div class="field">
+            <label for="tarjeta-dia-facturacion">Día de facturación (cierre) <span class="label-hint">(opcional)</span></label>
+            <div class="dia-rango">
+              <input type="number" id="tarjeta-dia-facturacion" placeholder="Día" min="1" max="31" step="1" />
+              <span class="dia-rango-sep">al</span>
+              <input type="number" id="tarjeta-dia-facturacion-hasta" placeholder="Día (opcional)" min="1" max="31" step="1" />
+            </div>
+            <span class="label-hint">Si el banco dice "entre el 18 y el 20", completa los dos.</span>
+            <span class="error-msg" id="error-tarjeta-dia-facturacion"></span>
+          </div>
+
+          <div class="field">
+            <label for="tarjeta-dia-pago">Día de pago (vencimiento) <span class="label-hint">(opcional)</span></label>
+            <div class="dia-rango">
+              <input type="number" id="tarjeta-dia-pago" placeholder="Día" min="1" max="31" step="1" />
+              <span class="dia-rango-sep">al</span>
+              <input type="number" id="tarjeta-dia-pago-hasta" placeholder="Día (opcional)" min="1" max="31" step="1" />
+            </div>
+            <span class="label-hint">Los avisos usan el primer día del rango, para no llegar tarde.</span>
+            <span class="error-msg" id="error-tarjeta-dia-pago"></span>
+          </div>
+
+          <div class="field">
+            <label for="tarjeta-dias-aviso">Avisar con cuántos días de anticipación <span class="label-hint">(opcional, antes del pago)</span></label>
+            <input type="number" id="tarjeta-dias-aviso" placeholder="Ej: 5" min="0" max="30" step="1" />
+          </div>
+
+          <div class="field owner-field">
+            <label for="tarjeta-notas">Notas <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="tarjeta-notas" placeholder="Ej: Tarjeta para compras del hogar" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="submit-tarjeta-btn" class="btn btn-primary">Agregar tarjeta</button>
+            <button type="button" id="cancel-edit-tarjeta-btn" class="btn btn-secondary hidden">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Mis tarjetas</h2>
+        </div>
+        <p id="tarjetas-empty-state" class="empty-state hidden">Aún no has registrado ninguna tarjeta. ¡Agrega la primera arriba! 👆</p>
+        <div id="tarjetas-list"></div>
+      </section>
+
+      <!-- ---------- Personas ---------- -->
+      <section class="table-section" id="personas-section">
+        <div class="table-header">
+          <h2>👥 Personas</h2>
+        </div>
+        <p class="lede-hint">Quiénes pueden aparecer como compradores o como acreedores de una deuda. Marca "vive en el hogar" para que la persona aparezca en "¿Quién realiza esta compra?".</p>
+        <div id="personas-list"></div>
+        <form id="persona-form" class="persona-form" novalidate>
+          <input type="text" id="persona-nuevo-nombre" placeholder="Nombre (ej: Tía Marta)" />
+          <label class="radio-option">
+            <input type="checkbox" id="persona-nuevo-hogar" checked />
+            Vive en el hogar
+          </label>
+          <button type="submit" class="btn btn-primary btn-small">Agregar persona</button>
+        </form>
+        <span class="error-msg" id="error-persona-nuevo-nombre"></span>
+      </section>
+
+      <!-- ---------- Respaldos ---------- -->
+      <section class="table-section" id="respaldo-section">
+        <div class="table-header">
+          <h2>💾 Respaldos</h2>
+        </div>
+        <p id="respaldo-estado" class="respaldo-estado"></p>
+
+        <div class="respaldo-config">
+          <label for="respaldo-frecuencia">Avisarme / respaldar cada</label>
+          <select id="respaldo-frecuencia">
+            <option value="1">1 día</option>
+            <option value="3" selected>3 días</option>
+            <option value="7">7 días</option>
+            <option value="15">15 días</option>
+          </select>
+        </div>
+
+        <p class="lede-hint" id="respaldo-auto-hint"></p>
+        <div class="respaldo-acciones">
+          <button type="button" id="respaldo-auto-btn" class="btn btn-primary btn-small">Activar respaldo automático</button>
+          <button type="button" id="respaldo-auto-off-btn" class="btn btn-secondary btn-small hidden">Desactivar</button>
+        </div>
+      </section>
+
+      <!-- ---------- Sincronización en la nube ---------- -->
+      <section class="table-section" id="sync-section">
+        <div class="table-header">
+          <h2>☁️ Sincronización entre teléfono y computador</h2>
+        </div>
+        <p id="sync-estado" class="respaldo-estado"></p>
+
+        <details id="sync-ayuda" class="sync-ayuda">
+          <summary>¿Cómo funciona? (léelo una vez)</summary>
+          <ol class="sync-pasos">
+            <li>La conexión a la nube <strong>ya viene lista</strong>: no tienes que configurar nada de Firebase.</li>
+            <li>Elige un <strong>código de sincronización</strong> (toca "Generar" o escribe uno tuyo largo) y toca <strong>Conectar</strong>.</li>
+            <li>En tu <strong>otro dispositivo</strong>, abre la app, escribe <strong>el mismo código</strong> y toca Conectar. ¡Listo, quedan sincronizados!</li>
+            <li>Desde ahí, cada cambio se guarda solo en la nube y aparece en el otro equipo en unos segundos.</li>
+            <li>Al conectar, si la nube ya tiene datos, este equipo los trae y reemplaza los suyos. Conecta primero el que tenga la información correcta.</li>
+          </ol>
+        </details>
+
+        <div class="field">
+          <label for="sync-config">Configuración de Firebase <span class="label-hint">(ya viene puesta — no necesitas tocarla)</span></label>
+          <textarea id="sync-config" rows="6" placeholder="Pega aquí el bloque firebaseConfig = { ... }"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="sync-code">Código de sincronización <span class="label-hint">(el mismo en ambos dispositivos)</span></label>
+          <div class="sync-code-row">
+            <input type="text" id="sync-code" placeholder="Tu código secreto" />
+            <button type="button" id="sync-generate-btn" class="btn btn-outline btn-small">Generar</button>
+          </div>
+          <span class="label-hint">Es tu contraseña de sincronización: quien lo tenga puede ver tus datos. No lo compartas.</span>
+        </div>
+
+        <div class="respaldo-acciones">
+          <button type="button" id="sync-connect-btn" class="btn btn-primary btn-small">Conectar</button>
+          <button type="button" id="sync-disconnect-btn" class="btn btn-secondary btn-small hidden">Desconectar</button>
+        </div>
+        <p class="lede-hint" id="sync-hint">Al conectar: si la nube ya tiene datos, este dispositivo los traerá y reemplazará los de aquí. Conecta primero el equipo que tiene la información correcta.</p>
+      </section>
+
+      <section class="table-section danger-zone">
+        <h2>⚠️ Zona de peligro</h2>
+        <p class="lede-hint">Esto borra permanentemente todos los datos guardados en este dispositivo: tarjetas, compras, deudas, abonos, sueldo y papelera. No se puede deshacer.</p>
+        <button type="button" id="delete-all-data-btn" class="btn btn-danger">Eliminar todos los datos</button>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <p id="confirm-message">¿Mover este registro a la papelera?</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="confirm-delete-btn" class="btn btn-danger">Mover a papelera</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="trash-modal" class="modal-overlay hidden">
+    <div class="modal trash-modal">
+      <div class="trash-modal-header">
+        <h3>Papelera</h3>
+        <button type="button" id="empty-trash-btn" class="btn btn-danger btn-small">Vaciar papelera</button>
+      </div>
+      <div id="trash-list"></div>
+      <p id="trash-empty-state" class="empty-state hidden">La papelera está vacía.</p>
+      <div class="modal-actions">
+        <button type="button" id="close-trash-btn" class="btn btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmación antes de importar -->
+  <div id="import-confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <p id="import-confirm-message"></p>
+      <div class="modal-actions">
+        <button id="import-confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="import-confirm-ok-btn" class="btn btn-primary">Importar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marcar una compra o cuota como pagada -->
+  <div id="cobro-confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="cobro-confirm-titulo">Marcar como pagada</h3>
+      <p id="cobro-confirm-message"></p>
+      <div class="modal-actions modal-actions-stack">
+        <button id="cobro-confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="cobro-confirm-solo-btn" class="btn btn-secondary">Solo marcarla</button>
+        <button id="cobro-confirm-ok-btn" class="btn btn-primary">Sí, registrar el dinero</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmación al marcar algo como pagado -->
+  <div id="pago-confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Confirmar pago</h3>
+      <p>¿Estás seguro de que quieres marcar este monto/cuenta como pagado?</p>
+      <p id="pago-confirm-detalle" class="lede-hint"></p>
+      <div class="modal-actions">
+        <button id="pago-confirm-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="pago-confirm-ok-btn" class="btn btn-primary">Sí, marcar como pagado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmación eliminar todos los datos -->
+  <div id="delete-all-confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>⚠️ Eliminar todos los datos</h3>
+      <p>Esto borrará permanentemente TODA la información guardada en este dispositivo: tarjetas, compras, deudas, abonos, sueldo y papelera. Esta acción no se puede deshacer. ¿Quieres continuar?</p>
+      <div class="modal-actions">
+        <button id="delete-all-cancel-btn" class="btn btn-secondary">Cancelar</button>
+        <button id="delete-all-confirm-btn" class="btn btn-danger">Sí, eliminar todo</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="personas-conocidas-list"></datalist>
+
+  <script src="js/constants.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/trash.js"></script>
+  <script src="js/personas.js"></script>
+  <script src="js/tarjetas.js"></script>
+  <script src="js/compras.js"></script>
+  <script src="js/deudas.js"></script>
+  <script src="js/sueldo.js"></script>
+  <script src="js/estadisticas.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").catch(function (err) {
+          console.error("No se pudo registrar el service worker:", err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

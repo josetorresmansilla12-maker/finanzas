@@ -1,0 +1,1852 @@
+:root {
+  --color-bg: #f3f8f6;
+  --color-surface: #ffffff;
+  --color-primary: #1f7a5c;
+  --color-primary-dark: #145a43;
+  --color-accent: #cfe8dc;
+  --color-accent-text: #145a43;
+  --color-text: #22302c;
+  --color-text-muted: #66786f;
+  --color-border: #dbe8e2;
+  --color-tint: #eef6f2;
+  --color-danger: #b3453d;
+  --color-danger-dark: #93362f;
+  --color-warning: #b3790a;
+  --color-warning-bg: #fbeecb;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(20, 45, 35, 0.08);
+  --chart-1: #1f7a5c;
+  --chart-2: #b3790a;
+  --chart-3: #1c5f7a;
+  --chart-4: #8a3d8f;
+  --chart-5: #b3453d;
+  --chart-6: #4a6b8a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.app-header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.7rem;
+}
+
+.subtitle {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.header-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btn-header {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.btn-header:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+#trash-count-badge {
+  margin-left: 4px;
+}
+
+.tabs {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  border: none;
+  background: transparent;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-family: inherit;
+}
+
+.tab-btn.active {
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.card {
+  flex: 1;
+  min-width: 180px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.card-sublabel {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.form-section,
+.table-section {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.form-section h2,
+.table-section h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+.deuda-inline-form {
+  box-shadow: none;
+  border: 1px solid var(--color-border);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+#tarjeta-form,
+#compra-form,
+#abono-mama-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.owner-field {
+  grid-column: 1 / -1;
+}
+
+.radio-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  background: var(--color-surface);
+}
+
+.radio-option input[type="radio"],
+.radio-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.interes-checkbox-option {
+  display: inline-flex;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.field input,
+.field select {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #f6fbf9;
+  color: var(--color-text);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(31, 122, 92, 0.15);
+}
+
+.field input.invalid,
+.field select.invalid {
+  border-color: var(--color-danger);
+}
+
+.error-msg {
+  min-height: 1.1em;
+  font-size: 0.8rem;
+  color: var(--color-danger);
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+  font-family: inherit;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: #dcece4;
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  background: #cbe1d5;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-border);
+}
+
+.btn-outline:hover {
+  background: #e9f4ef;
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-dark);
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.table-header h2 {
+  margin: 0;
+}
+
+.lede-hint {
+  margin: -8px 0 16px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.table-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+tbody tr:hover {
+  background: var(--color-tint);
+}
+
+.col-value {
+  text-align: right;
+}
+
+.col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.col-value {
+  text-align: right;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+td.col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 32px 16px;
+}
+
+.month-group {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.month-group summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-tint);
+  font-weight: 700;
+}
+
+.month-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.month-group summary::before {
+  content: "▸";
+  margin-right: 8px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.month-group[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.month-meta {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.month-group table {
+  margin: 0;
+}
+
+.label-hint {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.ventas-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.ventas-filters select {
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.ventas-filter-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ventas-filter-dates label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.ventas-filter-dates input[type="date"] {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* ---------- Tarjetas ---------- */
+
+.tarjeta-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.tarjeta-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tarjeta-nombre {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.tarjeta-meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.tarjeta-owner-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  background: var(--color-tint);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.due-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.due-badge.ok {
+  background: var(--color-tint);
+  color: var(--color-primary-dark);
+}
+
+.due-badge.soon {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.due-badge.overdue {
+  background: #f6dedb;
+  color: var(--color-danger-dark);
+}
+
+.tarjeta-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------- Compras / deudas: tarjetas de cuotas y personas ---------- */
+
+.cuota-section {
+  margin-top: 8px;
+}
+
+.cuota-section-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.cuota-section-empty {
+  color: var(--color-text-muted);
+  padding: 12px 0;
+}
+
+.cuota-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.cuota-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cuota-client {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.cuota-meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.cuota-value {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  white-space: nowrap;
+}
+
+.cuota-subtitle {
+  margin: 16px 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.abono-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.abono-row:last-child {
+  border-bottom: none;
+}
+
+.abono-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.abono-row-amount {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.abono-row-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.compra-mini-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compra-mini-row:last-child {
+  border-bottom: none;
+}
+
+.compra-mini-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compra-mini-desc {
+  font-weight: 600;
+}
+
+.compra-mini-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.compra-mini-value {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  white-space: nowrap;
+}
+
+.deuda-payment-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.deuda-payment-form input,
+.deuda-payment-form select {
+  padding: 9px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.deuda-payment-amount,
+.deuda-payment-note {
+  flex: 1;
+  min-width: 130px;
+}
+
+.deuda-payment-date {
+  min-width: 150px;
+}
+
+.deuda-payment-card-select {
+  flex-basis: 100%;
+}
+
+/* ---------- Categorías / tags ---------- */
+
+.categoria-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.categoria-tag.fijo {
+  background: var(--color-tint);
+  color: var(--color-primary-dark);
+}
+
+.categoria-tag.suscripcion {
+  background: #e4e6fb;
+  color: #3d3fa8;
+}
+
+.categoria-tag.variable {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.debe-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.debe-tag.personal {
+  background: var(--color-tint);
+  color: var(--color-primary-dark);
+}
+
+.debe-tag.mama {
+  background: #f6dedb;
+  color: var(--color-danger-dark);
+}
+
+.debe-tag.me_deben {
+  background: #d8ecf5;
+  color: #1c5f7a;
+}
+
+/* ---------- Estadísticas ---------- */
+
+.estad-period-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.estad-period-field label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.estad-period-field select {
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.estad-tipo-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.estad-tipo-row:last-child {
+  border-bottom: none;
+}
+
+.estad-tipo-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.estad-tipo-bar-wrap {
+  background: var(--color-tint);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.estad-tipo-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.estad-tipo-value {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.trend-chart-wrap {
+  overflow-x: auto;
+}
+
+.trend-chart-svg {
+  display: block;
+}
+
+.trend-label {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+}
+
+polyline.trend-line {
+  fill: none !important;
+  stroke-width: 2;
+}
+
+.trend-dot {
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+
+.trend-series-1 { stroke: var(--chart-1); fill: var(--chart-1); background-color: var(--chart-1); }
+.trend-series-2 { stroke: var(--chart-2); fill: var(--chart-2); background-color: var(--chart-2); }
+.trend-series-3 { stroke: var(--chart-3); fill: var(--chart-3); background-color: var(--chart-3); }
+.trend-series-4 { stroke: var(--chart-4); fill: var(--chart-4); background-color: var(--chart-4); }
+.trend-series-5 { stroke: var(--chart-5); fill: var(--chart-5); background-color: var(--chart-5); }
+.trend-series-6 { stroke: var(--chart-6); fill: var(--chart-6); background-color: var(--chart-6); }
+
+.trend-category-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.trend-category-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: var(--color-surface);
+}
+
+.trend-category-option input {
+  accent-color: var(--color-primary);
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.trend-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary-dark);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 200;
+  max-width: 90vw;
+}
+
+.toast.hidden {
+  display: none;
+}
+
+.toast-text {
+  font-size: 0.92rem;
+}
+
+.toast-action-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+/* ---------- Modales ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 30, 26, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal p {
+  margin-top: 0;
+}
+
+.modal h3 {
+  margin-top: 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.trash-modal {
+  max-width: 560px;
+}
+
+.trash-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.trash-modal-header h3 {
+  margin: 0;
+}
+
+#trash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trash-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.trash-item:last-child {
+  border-bottom: none;
+}
+
+.trash-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trash-item-icon {
+  font-size: 1.3rem;
+}
+
+.trash-item-title {
+  font-weight: 600;
+}
+
+.trash-item-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.trash-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ---------- Avisos ---------- */
+
+.app-alerts {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-alerts:not(:empty) {
+  padding-top: 16px;
+}
+
+.app-alert {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid #ecd699;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-alert-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  #tarjeta-form,
+  #compra-form,
+  #sueldo-form {
+    grid-template-columns: 1fr;
+  }
+  .summary-cards {
+    flex-direction: column;
+  }
+  .cuota-card-header,
+  .tarjeta-card-header {
+    flex-direction: column;
+  }
+  .estad-tipo-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+#sueldo-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+/* ---------- Tarjetas: próximos vencimientos (varias fechas) ---------- */
+
+.tarjetas-proximos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tarjeta-proximo-row {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+/* ---------- Compras: suscripción recurrente ---------- */
+
+.suscripcion-detalle-inputs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.suscripcion-detalle-inputs input {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  background: #f6fbf9;
+  color: var(--color-text);
+}
+
+.recurrencia-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recurrencia-proximo {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Deudas: cronograma de cuotas ---------- */
+
+.cuota-schedule-block {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--color-tint);
+}
+
+.cuota-schedule-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--color-border);
+}
+
+.cuota-schedule-row.cuota-paid .cuota-schedule-label {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.cuota-schedule-label {
+  font-size: 0.88rem;
+}
+
+/* ---------- Estadísticas: acciones del selector de categorías ---------- */
+
+.trend-category-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ---------- Zona de peligro ---------- */
+
+.danger-zone {
+  border: 1px solid var(--color-danger);
+}
+
+.danger-zone h2 {
+  color: var(--color-danger-dark);
+}
+
+
+/* ---------- Personas del hogar ---------- */
+.persona-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.persona-row:last-child {
+  border-bottom: none;
+}
+
+.persona-row-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.persona-nombre {
+  font-weight: 600;
+}
+
+.persona-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.persona-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.persona-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.persona-form input[type="text"] {
+  flex: 1 1 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+/* ---------- Cuadros de deuda (formato unificado) ---------- */
+.deuda-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.deuda-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.deuda-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.deuda-card-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.deuda-card-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.deuda-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.deuda-stat-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.deuda-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.deuda-stat-value.pendiente {
+  color: var(--color-danger-dark);
+}
+
+.deuda-stat-value.al-dia {
+  color: var(--color-primary);
+}
+
+.deuda-stat-value.pagado {
+  font-size: 1.6rem;
+  color: var(--color-primary);
+}
+
+.deuda-tarjeta-summary {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.compra-mini-pagada .compra-mini-desc {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Mi sueldo: distribución y torta ---------- */
+.subsection-title {
+  margin: 22px 0 4px;
+  font-size: 1.05rem;
+}
+
+.distribucion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.distribucion-row:last-child {
+  border-bottom: none;
+}
+
+.distribucion-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.distribucion-nombre {
+  flex: 1 1 140px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+.distribucion-pct {
+  width: 76px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.distribucion-sign {
+  color: var(--color-text-muted);
+}
+
+.distribucion-monto {
+  min-width: 110px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.distribucion-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.pie-layout {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.pie-chart-wrap {
+  flex: 0 0 200px;
+}
+
+.pie-chart-svg {
+  width: 200px;
+  height: 200px;
+}
+
+.pie-slice {
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+
+.pie-slice-stroke {
+  fill: none;
+}
+
+.pie-legend {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.ingreso-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ingreso-tag.fijo {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.ingreso-tag.extra {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+@media (max-width: 640px) {
+  .deuda-card-head {
+    flex-direction: column;
+  }
+  .deuda-card-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .deuda-stat {
+    align-items: flex-start;
+  }
+  .pie-chart-wrap {
+    margin: 0 auto;
+  }
+  .persona-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ---------- Mi sueldo: comparación planificado vs. real ---------- */
+.pie-compare {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.pie-compare-col {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+.pie-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pie-compare .pie-layout {
+  margin-top: 8px;
+  gap: 16px;
+}
+
+.sobre-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sobre-row:last-child {
+  border-bottom: none;
+}
+
+.sobre-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.sobre-row-name {
+  font-weight: 600;
+}
+
+.sobre-row-meta {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.sobre-row-meta.excedido {
+  color: var(--color-danger-dark);
+  font-weight: 600;
+}
+
+.estad-tipo-bar-fill.excedido {
+  background-color: var(--color-danger);
+}
+
+.sobre-map-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sobre-map-row:last-child {
+  border-bottom: none;
+}
+
+.sobre-map-label {
+  flex: 1 1 auto;
+}
+
+.sobre-map-select {
+  flex: 0 0 190px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.ingreso-tag.retiro {
+  background: var(--color-tint);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .pie-compare {
+    gap: 8px;
+  }
+  .sobre-map-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sobre-map-select {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---------- Participación en los aportes al hogar ---------- */
+.participacion-bar {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-tint);
+  margin: 10px 0 8px;
+}
+
+.participacion-seg {
+  display: block;
+  height: 100%;
+}
+
+.participacion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.participacion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.participacion-lider {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Indicador de reembolsos por abonar ---------- */
+.card.card-alerta {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.card.card-alerta .card-value {
+  color: var(--color-warning);
+}
+
+/* ---------- Notas explicativas dentro de los cuadros de deuda ---------- */
+.deuda-card-nota {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--color-tint);
+  font-size: 0.87rem;
+  color: var(--color-text-muted);
+}
+
+.deuda-card-nota.aviso {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.modal-actions-stack {
+  flex-wrap: wrap;
+}
+
+/* ---------- Variación contra el mes anterior ---------- */
+.card-delta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.card-delta.sube {
+  color: var(--color-danger-dark);
+  font-weight: 600;
+}
+
+.card-delta.baja {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ---------- Cuentas pendientes del mes ---------- */
+.pendiente-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pendiente-row:last-child {
+  border-bottom: none;
+}
+
+.pendiente-nombre {
+  font-weight: 600;
+}
+
+/* ---------- Saldo neto por persona ---------- */
+.saldo-neto-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.saldo-neto-row:last-child {
+  border-bottom: none;
+}
+
+.saldo-neto-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.saldo-neto-nombre {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.saldo-neto-detalle {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.saldo-neto-valor {
+  font-weight: 700;
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.saldo-neto-valor.a-favor {
+  color: var(--color-primary);
+}
+
+.saldo-neto-valor.en-contra {
+  color: var(--color-danger-dark);
+}
+
+/* ---------- Buscador de compras ---------- */
+.compras-buscador {
+  flex: 1 1 100%;
+  min-width: 200px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* ---------- Respaldos ---------- */
+.respaldo-estado {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--color-tint);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.respaldo-estado.ok {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.respaldo-estado.aviso {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.respaldo-config {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.respaldo-config select {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.respaldo-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.app-alert.app-alert-info {
+  background: var(--color-tint);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Rango de días (facturación / pago) ---------- */
+.dia-rango {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dia-rango input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.dia-rango-sep {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  flex: none;
+}
+
+/* ---------- Sincronización en la nube ---------- */
+#sync-config {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.sync-code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sync-code-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.sync-ayuda {
+  margin-bottom: 14px;
+  background: var(--color-tint);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.sync-ayuda summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.sync-pasos {
+  margin: 10px 0 2px;
+  padding-left: 20px;
+}
+
+.sync-pasos li {
+  margin-bottom: 7px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
