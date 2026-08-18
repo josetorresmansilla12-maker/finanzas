@@ -176,12 +176,22 @@
 
   // Guarda un abono sin refrescar la pantalla, para poder combinarlo con el
   // marcado en una sola operación.
+  //
+  // Si la compra se pagó con una tarjeta propia, ese dinero que te devuelven
+  // NO se da por abonado al banco automáticamente: queda marcado como
+  // "recibido, pendiente de aplicar" (igual que cuando se elige una tarjeta
+  // a mano en "Registrar reembolso recibido"), para que la tarjeta lo avise
+  // en vez de darlo por pagado solo.
   function pushAbonoDeCompra(compra, monto, nota) {
     var abonos = loadAbonos();
     var record = { id: uid(), amount: monto, date: todayStamp(), note: nota || null, createdAt: Date.now() };
     if (esMeDeben(compra)) {
       record.tipo = "me_deben";
       record.persona = deudorKey(compra);
+      if (compra.tarjetaId && esTarjetaPersonal(compra.tarjetaId)) {
+        record.aplicarATarjetaId = compra.tarjetaId;
+        record.aplicadoAlBanco = false;
+      }
     } else {
       record.tipo = "deuda_mia";
       record.acreedor = compra.acreedor;
@@ -433,10 +443,16 @@
 
   // ---------- Bloques compartidos ----------
 
+  // "contextoTarjeta" se usa al mostrar esta compra dentro de su tarjeta: ahí
+  // que la persona ya te haya devuelto el dinero (compra.pagada) NO se tacha
+  // como si el banco ya estuviera pagado — son dos cosas distintas. En su
+  // lugar se muestra un aviso de que ese dinero todavía no se abonó ahí.
   function buildCompraMiniRow(compra, opciones) {
     var conBoton = opciones && opciones.conBotonPagada;
+    var contextoTarjeta = opciones && opciones.contextoTarjeta;
+    var tachar = compra.pagada && !contextoTarjeta;
     var row = document.createElement("div");
-    row.className = "compra-mini-row" + (compra.pagada ? " compra-mini-pagada" : "");
+    row.className = "compra-mini-row" + (tachar ? " compra-mini-pagada" : "");
 
     var info = document.createElement("div");
     info.className = "compra-mini-info";
@@ -469,6 +485,20 @@
         itemsEl.textContent = "🧾 " + itemsTexto;
         info.appendChild(itemsEl);
       }
+    }
+
+    if (compra.fechaPagoAcordada && !compra.pagada) {
+      var fechaAcordadaEl = document.createElement("span");
+      fechaAcordadaEl.className = "compra-mini-meta";
+      fechaAcordadaEl.textContent = "📅 Pago acordado: " + formatDateDisplay(compra.fechaPagoAcordada);
+      info.appendChild(fechaAcordadaEl);
+    }
+
+    if (contextoTarjeta && compra.pagada) {
+      var pendienteBancoEl = document.createElement("span");
+      pendienteBancoEl.className = "compra-mini-meta aviso-pendiente-banco";
+      pendienteBancoEl.textContent = "💰 Dinero recibido, pero aún no abonado a la tarjeta";
+      info.appendChild(pendienteBancoEl);
     }
     row.appendChild(info);
 
@@ -953,7 +983,7 @@
       callout.style.marginBottom = "12px";
       var calloutText = document.createElement("span");
       calloutText.className = "app-alert-text";
-      calloutText.textContent = "💰 Recibiste " + formatCurrency(pendienteAplicar) + " en reembolsos para pagos hechos con esta tarjeta, aún no aplicados al banco.";
+      calloutText.textContent = "💰 Dinero recibido (" + formatCurrency(pendienteAplicar) + "), pero aún no abonado a la tarjeta. Confírmalo cuando de verdad lo hayas pagado al banco.";
       callout.appendChild(calloutText);
       var applyBtn = document.createElement("button");
       applyBtn.type = "button";
@@ -994,7 +1024,7 @@
       comprasTitle.className = "cuota-subtitle";
       comprasTitle.textContent = "Compras de este periodo";
       card.appendChild(comprasTitle);
-      compras.forEach(function (c) { card.appendChild(buildCompraMiniRow(c)); });
+      compras.forEach(function (c) { card.appendChild(buildCompraMiniRow(c, { contextoTarjeta: true })); });
     } else if (balance.generado === 0) {
       var sinCiclo = document.createElement("p");
       sinCiclo.className = "empty-state";

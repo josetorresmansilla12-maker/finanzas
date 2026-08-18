@@ -1934,3 +1934,9 @@ polyline.trend-line {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Aviso: dinero recibido pero no abonado al banco ---------- */
+.aviso-pendiente-banco {
+  color: var(--color-warning);
+  font-weight: 600;
+}

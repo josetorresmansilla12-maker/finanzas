@@ -15,6 +15,8 @@
     <h1>💰 Mis Finanzas 💰</h1>
     <p class="subtitle">Tarjetas, compras, deudas y estadísticas</p>
     <div class="header-actions">
+      <button type="button" id="undo-btn" class="btn btn-header" title="Deshacer">↶ Deshacer</button>
+      <button type="button" id="redo-btn" class="btn btn-header" title="Rehacer">↷ Rehacer</button>
       <button type="button" id="save-backup-btn" class="btn btn-header">💾 Guardar respaldo (.json)</button>
       <label for="import-file-input" class="btn btn-header file-label">📂 Importar respaldo (.json)</label>
       <input type="file" id="import-file-input" accept="application/json" class="hidden" />
@@ -241,6 +243,12 @@
             <label for="compra-persona">¿Quién me debe este monto? <span class="label-hint">(opcional)</span></label>
             <input type="text" id="compra-persona" list="personas-conocidas-list" placeholder="Ej: Colun" />
             <span class="error-msg" id="error-compra-persona"></span>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-fecha-acordada-field">
+            <label for="compra-fecha-acordada">Fecha de pago acordada <span class="label-hint">(opcional — si pactaron cuándo te pagará)</span></label>
+            <input type="date" id="compra-fecha-acordada" />
+            <span class="label-hint" id="compra-fecha-acordada-hint"></span>
           </div>
 
           <div class="field owner-field hidden" id="compra-origen-field">
@@ -924,6 +932,7 @@
   <script src="js/constants.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/undo.js"></script>
   <script src="js/tabs.js"></script>
   <script src="js/trash.js"></script>
   <script src="js/personas.js"></script>

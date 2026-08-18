@@ -16,6 +16,10 @@
 
   function saveToStorage(key, list) {
     try {
+      // Antes de escribir, se guarda una foto de cómo estaban los datos (ver
+      // js/undo.js). El guardián evita un error si por algún motivo ese
+      // archivo no llegó a cargar.
+      if (typeof registrarPasoDeshacer === "function") registrarPasoDeshacer(key);
       localStorage.setItem(key, JSON.stringify(list));
       return true;
     } catch (e) {
@@ -80,6 +84,7 @@
 
   function saveObjectToStorage(key, obj) {
     try {
+      if (typeof registrarPasoDeshacer === "function") registrarPasoDeshacer(key);
       localStorage.setItem(key, JSON.stringify(obj));
       return true;
     } catch (e) {

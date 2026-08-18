@@ -35,6 +35,9 @@
   var compraAcreedorSelect = document.getElementById("compra-acreedor");
   var compraPersonaField = document.getElementById("compra-persona-field");
   var compraPersonaInput = document.getElementById("compra-persona");
+  var compraFechaAcordadaField = document.getElementById("compra-fecha-acordada-field");
+  var compraFechaAcordadaInput = document.getElementById("compra-fecha-acordada");
+  var compraFechaAcordadaHint = document.getElementById("compra-fecha-acordada-hint");
   var compraOrigenField = document.getElementById("compra-origen-field");
   var compraSobreField = document.getElementById("compra-sobre-field");
   var compraSobreSelect = document.getElementById("compra-sobre");
@@ -243,6 +246,12 @@
     compraPersonaField.classList.toggle("hidden", !necesitaPersonaLibre);
     if (!necesitaPersonaLibre) compraPersonaInput.value = "";
 
+    // La fecha acordada solo tiene sentido cuando la compra genera una
+    // deuda real (a alguien se le debe, o alguien me debe a mí).
+    var esDeuda = acreedor !== "nadie";
+    compraFechaAcordadaField.classList.toggle("hidden", !esDeuda);
+    if (esDeuda) sugerirFechaAcordadaDesdeTarjeta();
+
     // El sueldo solo cubre gastos personales míos: si la compra es para el
     // hogar o la hizo otra persona, no hay nada que descontar del sueldo.
     var mostrarOrigen = !hogar && comprador === YO.id && loadSueldo().length > 0;
@@ -306,6 +315,7 @@
   // tarjeta elegida, pero solo si el usuario todavía no ha escrito una fecha
   // (para no pisarle un valor que ya haya editado a mano).
   compraMetodoPagoSelect.addEventListener("change", function () {
+    sugerirFechaAcordadaDesdeTarjeta();
     if (compraFechaPagoInput.value) return;
     if (!esMetodoPagoTarjeta(compraMetodoPagoSelect.value)) return;
     var tarjeta = tarjetaById(compraMetodoPagoSelect.value);
@@ -313,6 +323,24 @@
     var base = compraFechaInput.value || todayStamp();
     compraFechaPagoInput.value = nextOccurrenceOfDay(Number(tarjeta.diaPago), base);
   });
+
+  // Si la deuda se pagó con una tarjeta propia, "fecha de pago acordada" se
+  // rellena sola con el próximo vencimiento de esa tarjeta (el "primer
+  // vencimiento" al que hay que responder), pero solo si el campo está
+  // vacío: si ya se pactó una fecha distinta con la otra persona, no se
+  // pisa.
+  function sugerirFechaAcordadaDesdeTarjeta() {
+    if (compraFechaAcordadaInput.value) return;
+    var metodoPagoValue = compraMetodoPagoSelect.value;
+    if (!esMetodoPagoTarjeta(metodoPagoValue)) return;
+    var tarjeta = tarjetaById(metodoPagoValue);
+    if (!tarjeta) return;
+    var due = nextDueInfo(tarjeta);
+    if (!due) return;
+    compraFechaAcordadaInput.value = due.dueIso;
+    compraFechaAcordadaHint.textContent = "Sugerida según el próximo vencimiento de " + tarjeta.nombre +
+      ". Cámbiala si acordaron pagar antes.";
+  }
 
   // ---------- Personas conocidas (datalist) ----------
 
@@ -558,6 +586,7 @@
     if (activa) {
       compraCompradorOtroField.classList.add("hidden");
       compraPersonaField.classList.add("hidden");
+      compraFechaAcordadaField.classList.add("hidden");
       compraOrigenField.classList.add("hidden");
       compraSobreField.classList.add("hidden");
       compraSuscripcionField.classList.add("hidden");
@@ -764,6 +793,7 @@
     editingCompraId = null;
     clearCompraErrors();
     compraFechaInput.value = todayStamp();
+    compraFechaAcordadaHint.textContent = "";
     populateCategoriaSelect();
     populateMetodoPagoSelect(compraMetodoPagoSelect);
     compraMetodoPagoSelect.value = "efectivo";
@@ -822,6 +852,8 @@
     var hogarRadio = document.querySelector('input[name="compra-hogar"][value="' + (compra.esHogar ? "si" : "no") + '"]');
     if (hogarRadio) hogarRadio.checked = true;
     compraPersonaInput.value = compra.persona || "";
+    compraFechaAcordadaInput.value = compra.fechaPagoAcordada || "";
+    compraFechaAcordadaHint.textContent = "";
     var origenRadio = document.querySelector('input[name="compra-origen"][value="' + (compra.origenDinero || "sueldo") + '"]');
     if (origenRadio) origenRadio.checked = true;
     populateSobreSelect();
@@ -915,6 +947,7 @@
       mostrarEnEstad: comprador === COMPRADOR_OTRO.id ? compraCompradorOtroStatsInput.checked : null,
       acreedor: acreedor,
       persona: acreedor === "mi" && comprador === YO.id ? compraPersonaInput.value.trim() : null,
+      fechaPagoAcordada: acreedor !== "nadie" ? (compraFechaAcordadaInput.value || null) : null,
       esHogar: hogar,
       origenDinero: origenDinero,
       sobreId: origenDinero === "sueldo" ? (compraSobreSelect.value || null) : null,
@@ -1035,6 +1068,12 @@
         proxNote.textContent = "Próximo cargo: " + formatDateDisplay(prox);
         tdDesc.appendChild(proxNote);
       }
+    }
+    if (compra.fechaPagoAcordada) {
+      var fechaAcordadaNote = document.createElement("span");
+      fechaAcordadaNote.className = "recurrencia-proximo";
+      fechaAcordadaNote.textContent = "📅 Pago acordado: " + formatDateDisplay(compra.fechaPagoAcordada);
+      tdDesc.appendChild(fechaAcordadaNote);
     }
     if (compra.compartidaId) {
       var shareBadge = document.createElement("span");
