@@ -454,6 +454,22 @@
     metaEl.textContent = metaTexto;
     info.appendChild(descEl);
     info.appendChild(metaEl);
+
+    if (compra.compartidaId) {
+      var shareEl = document.createElement("span");
+      shareEl.className = "compra-mini-meta";
+      shareEl.textContent = "🤝 Compra compartida, total " + formatCurrency(compra.compartidaTotal) +
+        " entre: " + compartidaParticipantesTexto(compra);
+      info.appendChild(shareEl);
+
+      var itemsTexto = itemsResumenTexto(compra);
+      if (itemsTexto) {
+        var itemsEl = document.createElement("span");
+        itemsEl.className = "compra-mini-meta";
+        itemsEl.textContent = "🧾 " + itemsTexto;
+        info.appendChild(itemsEl);
+      }
+    }
     row.appendChild(info);
 
     var valueEl = document.createElement("span");

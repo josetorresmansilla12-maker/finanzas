@@ -62,7 +62,7 @@
         <form id="compra-form" novalidate>
           <input type="hidden" id="compra-id" />
 
-          <div class="field sale-type-field">
+          <div class="field sale-type-field" id="compra-tipo-pago-field">
             <label>Tipo de pago</label>
             <div class="radio-group">
               <label class="radio-option">
@@ -73,6 +73,43 @@
                 <input type="radio" name="compra-type" value="cuotas" />
                 En cuotas
               </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>¿Esta compra se dividió entre varias personas?</label>
+            <div class="radio-group">
+              <label class="radio-option">
+                <input type="radio" name="compra-compartida" value="no" checked />
+                No
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="compra-compartida" value="si" />
+                Sí — dividir entre varios
+              </label>
+            </div>
+            <p class="lede-hint hidden" id="compra-compartida-edit-notice"></p>
+          </div>
+
+          <div class="field owner-field hidden" id="compra-compartida-field">
+            <div class="compartida-box">
+              <h3 class="compartida-titulo">🤝 Participantes de la compra</h3>
+              <p class="lede-hint">Agrega a cada persona y cuánto le corresponde pagar. El total se calcula solo. Si tú pagaste una parte, agrégate también.</p>
+              <div id="compra-participantes-list" class="participantes-list"></div>
+              <button type="button" id="compra-participante-add-btn" class="btn btn-outline btn-small">➕ Agregar participante</button>
+              <div class="compartida-total-row">
+                <span>Total de la compra</span>
+                <strong id="compra-compartida-total">$0</strong>
+              </div>
+              <span class="error-msg" id="error-compra-participantes"></span>
+
+              <h3 class="compartida-titulo">🧾 Detalle de artículos <span class="label-hint">(opcional)</span></h3>
+              <p class="lede-hint">Para especificar qué se compró y, si quieres, a quién le corresponde cada ítem.</p>
+              <div id="compra-items-list" class="items-list"></div>
+              <div class="compartida-items-actions">
+                <button type="button" id="compra-item-add-btn" class="btn btn-outline btn-small">➕ Agregar ítem</button>
+                <button type="button" id="compra-items-autocompletar-btn" class="btn btn-secondary btn-small">Calcular montos desde los ítems</button>
+              </div>
             </div>
           </div>
 
@@ -97,7 +134,7 @@
             <input type="text" id="compra-descripcion" placeholder="Ej: Supermercado Jumbo" />
           </div>
 
-          <div class="field">
+          <div class="field" id="compra-monto-field">
             <label for="compra-monto">Monto total <span class="label-hint">(obligatorio)</span></label>
             <input type="number" id="compra-monto" placeholder="Ej: 45000" min="0" step="1" required />
             <span class="error-msg" id="error-compra-monto"></span>
@@ -164,7 +201,7 @@
             <span class="label-hint" id="compra-fijo-recordatorio-hint"></span>
           </div>
 
-          <div class="field">
+          <div class="field" id="compra-comprador-field">
             <label for="compra-comprador">¿Quién realiza esta compra?</label>
             <select id="compra-comprador"></select>
             <span class="label-hint">Se administra en Tarjetas → Personas.</span>
@@ -180,7 +217,7 @@
             <span class="label-hint">Déjalo sin marcar si solo quieres registrar la deuda y no un panel "Dinero de esta persona".</span>
           </div>
 
-          <div class="field">
+          <div class="field" id="compra-hogar-field">
             <label>¿Esta compra es para el hogar?</label>
             <div class="radio-group">
               <label class="radio-option">
@@ -195,7 +232,7 @@
             <span class="label-hint" id="compra-hogar-hint"></span>
           </div>
 
-          <div class="field">
+          <div class="field" id="compra-acreedor-field">
             <label for="compra-acreedor">¿A quién se le debe?</label>
             <select id="compra-acreedor"></select>
           </div>

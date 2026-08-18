@@ -363,6 +363,24 @@
     return compra.descripcion || categoriaLabel(compra);
   }
 
+  // ---------- Compras compartidas entre varias personas ----------
+  //
+  // Cada participante vive como una compra normal aparte (ver compras.js),
+  // pero todas guardan una copia de con quién y de los ítems, para poder
+  // mostrar el contexto completo sin tener que buscar a sus "hermanas".
+
+  function compartidaParticipantesTexto(compra) {
+    if (!compra.compartidaParticipantes) return "";
+    return compra.compartidaParticipantes.map(function (p) { return p.nombre; }).join(", ");
+  }
+
+  function itemsResumenTexto(compra) {
+    if (!compra.items || !compra.items.length) return "";
+    return compra.items.map(function (it) {
+      return it.descripcion + (it.monto ? " (" + formatCurrency(it.monto) + ")" : "");
+    }).join(" · ");
+  }
+
   // Cómo se pagó una compra: tarjeta real, o efectivo/débito cuando no hay
   // tarjeta asociada.
   function metodoPagoLabel(compra) {

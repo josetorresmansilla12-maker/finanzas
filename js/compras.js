@@ -40,6 +40,19 @@
   var compraSobreSelect = document.getElementById("compra-sobre");
   var compraHogarHint = document.getElementById("compra-hogar-hint");
   var compraNotasInput = document.getElementById("compra-notas");
+  var compraTipoPagoField = document.getElementById("compra-tipo-pago-field");
+  var compraMontoField = document.getElementById("compra-monto-field");
+  var compraCompradorField = document.getElementById("compra-comprador-field");
+  var compraHogarField = document.getElementById("compra-hogar-field");
+  var compraAcreedorField = document.getElementById("compra-acreedor-field");
+  var compraCompartidaField = document.getElementById("compra-compartida-field");
+  var compraCompartidaEditNotice = document.getElementById("compra-compartida-edit-notice");
+  var compraParticipantesListEl = document.getElementById("compra-participantes-list");
+  var compraParticipanteAddBtn = document.getElementById("compra-participante-add-btn");
+  var compraCompartidaTotalEl = document.getElementById("compra-compartida-total");
+  var compraItemsListEl = document.getElementById("compra-items-list");
+  var compraItemAddBtn = document.getElementById("compra-item-add-btn");
+  var compraItemsAutocompletarBtn = document.getElementById("compra-items-autocompletar-btn");
   var submitCompraBtn = document.getElementById("submit-compra-btn");
   var cancelEditCompraBtn = document.getElementById("cancel-edit-compra-btn");
   var formTitleCompra = document.getElementById("form-title-compra");
@@ -132,6 +145,14 @@
     if (group === "fijo") {
       var existing = getFijoRecordatorio(catId);
       compraFijoRecordatorioHint.textContent = existing ? ("Recordatorio actual: se paga el día " + existing + " de cada mes.") : "";
+    }
+
+    // Una compra compartida no admite suscripción recurrente (son dos formas
+    // distintas de generar varias compras a la vez): si está activa, la
+    // sección de suscripción se mantiene oculta pase lo que pase.
+    if (typeof esCompartidaActiva === "function" && esCompartidaActiva()) {
+      compraSuscripcionField.classList.add("hidden");
+      compraSuscripcionDetalleField.classList.add("hidden");
     }
   }
 
@@ -335,10 +356,365 @@
     return schedule;
   }
 
+  // =========================================================
+  // Compra compartida entre varias personas
+  //
+  // En vez de inventar un modelo de deuda nuevo, una compra compartida genera
+  // UNA compra normal por participante (misma fecha/categoría/método de pago,
+  // pero con su propio monto). Cada una reutiliza tal cual el motor de deudas
+  // que ya existe (comprasMeDeben, balanceMeDeben, "marcar pagada" con su
+  // control anti-duplicado): no hace falta tocar esa lógica para que cada
+  // parte se pueda pagar y marcar de forma independiente.
+  // =========================================================
+
+  var participanteRowSeq = 0;
+
+  function esCompartidaActiva() {
+    var checked = document.querySelector('input[name="compra-compartida"]:checked');
+    return !!checked && checked.value === "si";
+  }
+
+  function personaPickerOptions() {
+    return compradoresDisponibles().map(function (p) { return { value: p.id, label: p.nombre }; });
+  }
+
+  function participanteRowLabel(row) {
+    var select = row.querySelector(".participante-persona");
+    if (select.value === COMPRADOR_OTRO.id) {
+      var nombre = row.querySelector(".participante-otro-nombre").value.trim();
+      return nombre || "Otra persona";
+    }
+    var opt = select.options[select.selectedIndex];
+    return opt ? opt.textContent : "Participante";
+  }
+
+  // El selector de "a quién corresponde" de cada ítem se arma a partir de las
+  // filas de participantes actuales, así que hay que rehacerlo cada vez que
+  // se agrega, quita o renombra un participante.
+  function refreshItemParticipanteOptions() {
+    var participantRows = Array.from(compraParticipantesListEl.querySelectorAll(".participante-row"));
+    compraItemsListEl.querySelectorAll(".item-participante").forEach(function (sel) {
+      var previous = sel.value;
+      sel.innerHTML = "";
+      var noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "Sin asignar";
+      sel.appendChild(noneOpt);
+      participantRows.forEach(function (row) {
+        var o = document.createElement("option");
+        o.value = row.getAttribute("data-row-id");
+        o.textContent = participanteRowLabel(row);
+        sel.appendChild(o);
+      });
+      if (Array.from(sel.options).some(function (o) { return o.value === previous; })) sel.value = previous;
+    });
+  }
+
+  function recomputeCompartidaTotal() {
+    var total = 0;
+    compraParticipantesListEl.querySelectorAll(".participante-monto").forEach(function (inp) {
+      total += Number(inp.value) || 0;
+    });
+    compraCompartidaTotalEl.textContent = formatCurrency(total);
+    return total;
+  }
+
+  function buildParticipanteRow() {
+    participanteRowSeq++;
+    var rowId = "p" + participanteRowSeq;
+    var row = document.createElement("div");
+    row.className = "participante-row";
+    row.setAttribute("data-row-id", rowId);
+
+    var select = document.createElement("select");
+    select.className = "participante-persona";
+    personaPickerOptions().forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      select.appendChild(o);
+    });
+    row.appendChild(select);
+
+    var otroInput = document.createElement("input");
+    otroInput.type = "text";
+    otroInput.className = "participante-otro-nombre hidden";
+    otroInput.placeholder = "Nombre de la persona";
+    row.appendChild(otroInput);
+
+    var montoInput = document.createElement("input");
+    montoInput.type = "number";
+    montoInput.className = "participante-monto";
+    montoInput.min = "0";
+    montoInput.step = "1";
+    montoInput.placeholder = "Su parte";
+    row.appendChild(montoInput);
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn-danger btn-small";
+    removeBtn.textContent = "Quitar";
+    row.appendChild(removeBtn);
+
+    select.addEventListener("change", function () {
+      otroInput.classList.toggle("hidden", select.value !== COMPRADOR_OTRO.id);
+      refreshItemParticipanteOptions();
+    });
+    otroInput.addEventListener("input", refreshItemParticipanteOptions);
+    montoInput.addEventListener("input", recomputeCompartidaTotal);
+    removeBtn.addEventListener("click", function () {
+      row.remove();
+      recomputeCompartidaTotal();
+      refreshItemParticipanteOptions();
+    });
+
+    return row;
+  }
+
+  function addParticipanteRow() {
+    compraParticipantesListEl.appendChild(buildParticipanteRow());
+    refreshItemParticipanteOptions();
+  }
+
+  function buildItemRow() {
+    var row = document.createElement("div");
+    row.className = "item-row";
+
+    var desc = document.createElement("input");
+    desc.type = "text";
+    desc.className = "item-descripcion";
+    desc.placeholder = "Ej: Detergente";
+    row.appendChild(desc);
+
+    var monto = document.createElement("input");
+    monto.type = "number";
+    monto.className = "item-monto";
+    monto.min = "0";
+    monto.step = "1";
+    monto.placeholder = "Monto (opcional)";
+    row.appendChild(monto);
+
+    var sel = document.createElement("select");
+    sel.className = "item-participante";
+    row.appendChild(sel);
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn-danger btn-small";
+    removeBtn.textContent = "Quitar";
+    removeBtn.addEventListener("click", function () { row.remove(); });
+    row.appendChild(removeBtn);
+
+    return row;
+  }
+
+  function addItemRow() {
+    compraItemsListEl.appendChild(buildItemRow());
+    refreshItemParticipanteOptions();
+  }
+
+  // Suma los ítems asignados a cada participante y llena su monto con eso.
+  // Es un atajo: los montos por persona siguen siendo el dato real que se
+  // guarda, así que esto no reemplaza la posibilidad de escribirlos a mano.
+  function autocompletarMontosDesdeItems() {
+    var sumas = {};
+    Array.from(compraItemsListEl.querySelectorAll(".item-row")).forEach(function (row) {
+      var rowId = row.querySelector(".item-participante").value;
+      var monto = Number(row.querySelector(".item-monto").value);
+      if (!rowId || !monto) return;
+      sumas[rowId] = (sumas[rowId] || 0) + monto;
+    });
+    var huboCambios = false;
+    Array.from(compraParticipantesListEl.querySelectorAll(".participante-row")).forEach(function (row) {
+      var rowId = row.getAttribute("data-row-id");
+      if (sumas[rowId] != null) {
+        row.querySelector(".participante-monto").value = sumas[rowId];
+        huboCambios = true;
+      }
+    });
+    recomputeCompartidaTotal();
+    showToast(huboCambios ? "Montos calculados desde los ítems asignados." : "Asigna ítems a un participante para poder calcular sus montos.");
+  }
+
+  function resetCompartidaLists() {
+    compraParticipantesListEl.innerHTML = "";
+    compraItemsListEl.innerHTML = "";
+    recomputeCompartidaTotal();
+  }
+
+  // Única función que decide qué campos se ven: cuando la compra es
+  // compartida, todo lo que asume "un solo comprador y un solo acreedor"
+  // (monto, tipo de pago, comprador, hogar, acreedor, suscripción) se oculta
+  // y lo reemplaza el bloque de participantes.
+  function updateCompartidaDependentFields() {
+    var activa = esCompartidaActiva();
+    compraCompartidaField.classList.toggle("hidden", !activa);
+    compraMontoField.classList.toggle("hidden", activa);
+    compraTipoPagoField.classList.toggle("hidden", activa);
+    compraCompradorField.classList.toggle("hidden", activa);
+    compraHogarField.classList.toggle("hidden", activa);
+    compraAcreedorField.classList.toggle("hidden", activa);
+
+    if (activa) {
+      compraCompradorOtroField.classList.add("hidden");
+      compraPersonaField.classList.add("hidden");
+      compraOrigenField.classList.add("hidden");
+      compraSobreField.classList.add("hidden");
+      compraSuscripcionField.classList.add("hidden");
+      compraSuscripcionDetalleField.classList.add("hidden");
+      setCompraType("unico");
+      if (compraParticipantesListEl.children.length === 0) {
+        addParticipanteRow();
+        addParticipanteRow();
+      }
+    } else {
+      updateDeudaDependentFields();
+      updateCategoriaDependentFields();
+    }
+  }
+
+  document.querySelectorAll('input[name="compra-compartida"]').forEach(function (radio) {
+    radio.addEventListener("change", updateCompartidaDependentFields);
+  });
+  compraParticipanteAddBtn.addEventListener("click", addParticipanteRow);
+  compraItemAddBtn.addEventListener("click", addItemRow);
+  compraItemsAutocompletarBtn.addEventListener("click", autocompletarMontosDesdeItems);
+
+  // Lee y valida las filas de participantes e ítems tal como están en el
+  // formulario. Las filas totalmente vacías se ignoran en vez de exigir que
+  // se borren a mano.
+  function leerParticipantesYItems() {
+    var rows = Array.from(compraParticipantesListEl.querySelectorAll(".participante-row"));
+    var participantes = [];
+    var vistos = {};
+    var error = null;
+
+    rows.forEach(function (row) {
+      if (error) return;
+      var select = row.querySelector(".participante-persona");
+      var otroInput = row.querySelector(".participante-otro-nombre");
+      var montoInput = row.querySelector(".participante-monto");
+      var personaId = select.value;
+      var esOtro = personaId === COMPRADOR_OTRO.id;
+      var nombreOtro = esOtro ? otroInput.value.trim() : "";
+      var monto = Number(montoInput.value);
+
+      if (!monto && (!esOtro || !nombreOtro)) return; // fila sin usar
+
+      if (!monto || monto <= 0) {
+        error = "Cada participante necesita un monto mayor a cero.";
+        return;
+      }
+      if (esOtro && !nombreOtro) {
+        error = "Escribe el nombre de cada participante que no está en tu lista.";
+        return;
+      }
+
+      var clave = esOtro ? "otro::" + nombreOtro.toLowerCase() : personaId;
+      if (vistos[clave]) {
+        error = "Agregaste a la misma persona más de una vez.";
+        return;
+      }
+      vistos[clave] = true;
+
+      participantes.push({
+        personaId: personaId,
+        esOtro: esOtro,
+        nombre: esOtro ? nombreOtro : participanteRowLabel(row),
+        monto: monto,
+        rowId: row.getAttribute("data-row-id")
+      });
+    });
+
+    if (!error && participantes.length < 2) {
+      error = "Agrega al menos 2 personas entre las que se dividió la compra (puedes incluirte a ti).";
+    }
+
+    var items = [];
+    if (!error) {
+      Array.from(compraItemsListEl.querySelectorAll(".item-row")).forEach(function (row) {
+        var descripcion = row.querySelector(".item-descripcion").value.trim();
+        if (!descripcion) return;
+        var monto = Number(row.querySelector(".item-monto").value) || null;
+        var rowId = row.querySelector(".item-participante").value;
+        var participante = participantes.find(function (p) { return p.rowId === rowId; });
+        items.push({ descripcion: descripcion, monto: monto, paraNombre: participante ? participante.nombre : null });
+      });
+    }
+
+    var total = participantes.reduce(function (sum, p) { return sum + p.monto; }, 0);
+    return { valid: !error, error: error, participantes: participantes, items: items, total: total };
+  }
+
+  // Genera una compra normal por participante: la de "yo" (si corresponde)
+  // es un gasto propio sin deuda; la de cada otra persona queda con
+  // acreedor "mi", exactamente como cuando alguien "compra algo y me debe" —
+  // por eso el resto de la app (deudas, tarjetas, estadísticas) no necesita
+  // saber nada especial sobre compras compartidas para tratarlas bien.
+  function submitCompartida() {
+    var resultado = leerParticipantesYItems();
+    if (!resultado.valid) {
+      setCompraError("compra-participantes", resultado.error);
+      return;
+    }
+    document.getElementById("error-compra-participantes").textContent = "";
+
+    var categoria = compraCategoriaSelect.value;
+    var categoriaOtro = isOtroCategoria(categoria) ? compraCategoriaOtherInput.value.trim() : null;
+    var auto = categoria === "autos" ? selectedAuto() : null;
+    var descripcion = compraDescripcionInput.value.trim() || null;
+    var fecha = compraFechaInput.value || todayStamp();
+    var fechaPago = compraFechaPagoInput.value || null;
+    var metodoPagoValue = compraMetodoPagoSelect.value;
+    var esTarjeta = esMetodoPagoTarjeta(metodoPagoValue);
+    var notas = compraNotasInput.value.trim() || null;
+
+    var grupoId = uid();
+    var resumenParticipantes = resultado.participantes.map(function (p) {
+      return { nombre: p.nombre, monto: p.monto };
+    });
+
+    var compras = loadCompras();
+    resultado.participantes.forEach(function (p) {
+      var esYo = p.personaId === YO.id;
+      compras.push({
+        id: uid(), createdAt: Date.now(),
+        tipo: "unico", categoria: categoria, categoriaOtro: categoriaOtro, auto: auto,
+        descripcion: descripcion, monto: p.monto, fecha: fecha, cuotas: 1, tieneInteres: false,
+        fechaPago: fechaPago,
+        tarjetaId: esTarjeta ? metodoPagoValue : null,
+        metodoPago: esTarjeta ? null : metodoPagoValue,
+        comprador: p.esOtro ? COMPRADOR_OTRO.id : p.personaId,
+        compradorOtro: p.esOtro ? p.nombre : null,
+        acreedor: esYo ? "nadie" : "mi",
+        persona: null,
+        esHogar: false,
+        origenDinero: null,
+        sobreId: null,
+        notas: notas,
+        compartidaId: grupoId,
+        compartidaTotal: resultado.total,
+        compartidaParticipantes: resumenParticipantes,
+        items: resultado.items
+      });
+      if (p.esOtro) rememberPersona(p.nombre);
+    });
+
+    if (selectedCategoriaGroup() === "fijo" && compraFijoFechaPagoInput.value) {
+      setFijoRecordatorio(categoria, Number(compraFijoFechaPagoInput.value.split("-")[2]));
+    }
+
+    if (saveCompras(compras)) {
+      resetCompraForm();
+      renderAll();
+      showToast("Compra dividida entre " + resultado.participantes.length + " personas (total " + formatCurrency(resultado.total) + ").");
+    }
+  }
+
   // ---------- Validación ----------
 
   function clearCompraErrors() {
-    ["compra-categoria-other", "compra-monto", "compra-fecha", "compra-cuotas-count", "compra-persona", "compra-suscripcion"].forEach(function (id) {
+    ["compra-categoria-other", "compra-monto", "compra-fecha", "compra-cuotas-count", "compra-persona", "compra-suscripcion", "compra-participantes"].forEach(function (id) {
       document.getElementById("error-" + id).textContent = "";
       var input = document.getElementById(id);
       if (input) input.classList.remove("invalid");
@@ -403,6 +779,9 @@
     applyHogarDefault();
     populateSobreSelect();
     updateDeudaDependentFields();
+    resetCompartidaLists();
+    compraCompartidaEditNotice.classList.add("hidden");
+    updateCompartidaDependentFields();
     submitCompraBtn.textContent = "Registrar compra";
     formTitleCompra.textContent = "Registrar compra";
     cancelEditCompraBtn.classList.add("hidden");
@@ -450,6 +829,21 @@
     updateDeudaDependentFields();
     compraNotasInput.value = compra.notas || "";
 
+    // Editar una compra compartida solo edita ESTA parte (comprador/acreedor
+    // ya quedaron fijos al crearla); el grupo completo no se reabre para
+    // edición, solo se avisa de dónde viene.
+    document.querySelector('input[name="compra-compartida"][value="no"]').checked = true;
+    resetCompartidaLists();
+    updateCompartidaDependentFields();
+    if (compra.compartidaId) {
+      compraCompartidaEditNotice.textContent = "🤝 Esta compra es tu parte de una compra compartida (total del grupo " +
+        formatCurrency(compra.compartidaTotal) + ", entre: " + compartidaParticipantesTexto(compra) +
+        "). Para cambiar el grupo completo, elimina estas filas y regístralo de nuevo.";
+      compraCompartidaEditNotice.classList.remove("hidden");
+    } else {
+      compraCompartidaEditNotice.classList.add("hidden");
+    }
+
     submitCompraBtn.textContent = "Guardar cambios";
     formTitleCompra.textContent = "Editar compra";
     cancelEditCompraBtn.classList.remove("hidden");
@@ -483,6 +877,14 @@
 
   compraForm.addEventListener("submit", function (e) {
     e.preventDefault();
+
+    // Una compra compartida sigue un camino totalmente aparte: genera varias
+    // compras (una por participante) en vez de una sola. Solo aplica al
+    // registrar; editar una fila existente siempre es de a una.
+    if (esCompartidaActiva() && !editingCompraId) {
+      submitCompartida();
+      return;
+    }
 
     var tipo = document.querySelector('input[name="compra-type"]:checked').value;
     var comprador = compraCompradorSelect.value || YO.id;
@@ -632,6 +1034,26 @@
         proxNote.className = "recurrencia-proximo";
         proxNote.textContent = "Próximo cargo: " + formatDateDisplay(prox);
         tdDesc.appendChild(proxNote);
+      }
+    }
+    if (compra.compartidaId) {
+      var shareBadge = document.createElement("span");
+      shareBadge.className = "compartida-badge";
+      shareBadge.title = "Compra compartida entre: " + compartidaParticipantesTexto(compra);
+      shareBadge.textContent = "🤝 compartida";
+      tdDesc.appendChild(shareBadge);
+
+      var shareNote = document.createElement("span");
+      shareNote.className = "recurrencia-proximo";
+      shareNote.textContent = "Con " + compartidaParticipantesTexto(compra) + " · total " + formatCurrency(compra.compartidaTotal);
+      tdDesc.appendChild(shareNote);
+
+      var itemsTexto = itemsResumenTexto(compra);
+      if (itemsTexto) {
+        var itemsNote = document.createElement("span");
+        itemsNote.className = "recurrencia-proximo";
+        itemsNote.textContent = "🧾 " + itemsTexto;
+        tdDesc.appendChild(itemsNote);
       }
     }
     tr.appendChild(tdDesc);
