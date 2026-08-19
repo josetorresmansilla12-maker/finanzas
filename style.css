@@ -1978,11 +1978,11 @@ polyline.trend-line {
 }
 
 tr.compra-resaltada td {
-  background: var(--color-tint);
+  background: var(--color-accent);
 }
 
 tr.compra-resaltada {
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  box-shadow: inset 4px 0 0 var(--color-primary-dark);
 }
 
 /* ---------- Compra compartida: fila única con detalle desplegable ---------- */

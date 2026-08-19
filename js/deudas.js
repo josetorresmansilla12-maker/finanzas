@@ -21,6 +21,9 @@
   var tarjetasDeudaList = document.getElementById("tarjetas-deuda-list");
   var tarjetasDeudaEmptyState = document.getElementById("tarjetas-deuda-empty-state");
 
+  var deudasTarjetasResumenList = document.getElementById("deudas-tarjetas-resumen-list");
+  var deudasTarjetasResumenEmpty = document.getElementById("deudas-tarjetas-resumen-empty");
+
   var saldoNetoSection = document.getElementById("saldo-neto-section");
   var saldoNetoList = document.getElementById("saldo-neto-list");
 
@@ -912,6 +915,52 @@
     renderSaldoNeto();
     renderMeDeben();
     renderDeudasMias();
+    renderDeudaTarjetasResumen();
+  }
+
+  // Resumen rápido de "cuánto tengo que poner yo para pagar cada tarjeta",
+  // visible directo en Deudas sin tener que cambiar de pestaña. Reusa el
+  // mismo cálculo que la pestaña "Deuda Tarjetas" (balanceForTarjeta): suma
+  // todo lo cargado en la tarjeta sin importar para quién fue la compra.
+  function buildTarjetaDeudaResumenRow(tarjeta) {
+    var balance = balanceForTarjeta(tarjeta.id);
+
+    var row = document.createElement("div");
+    row.className = "compra-mini-row";
+
+    var info = document.createElement("div");
+    info.className = "compra-mini-info";
+    var nombreEl = document.createElement("span");
+    nombreEl.className = "compra-mini-desc";
+    nombreEl.textContent = tarjetaLabel(tarjeta.id);
+    var metaEl = document.createElement("span");
+    metaEl.className = "compra-mini-meta";
+    metaEl.textContent = "Cargado: " + formatCurrency(balance.generado) + " · Ya abonado: " + formatCurrency(balance.abonado);
+    info.appendChild(nombreEl);
+    info.appendChild(metaEl);
+    row.appendChild(info);
+
+    var valueEl = document.createElement("span");
+    valueEl.className = "compra-mini-value";
+    valueEl.textContent = formatCurrency(balance.pendiente);
+    row.appendChild(valueEl);
+
+    return row;
+  }
+
+  function renderDeudaTarjetasResumen() {
+    if (!deudasTarjetasResumenList) return;
+    var tarjetas = misTarjetas().filter(function (t) { return balanceForTarjeta(t.id).pendiente > 0; })
+      .sort(function (a, b) { return balanceForTarjeta(b.id).pendiente - balanceForTarjeta(a.id).pendiente; });
+
+    deudasTarjetasResumenEmpty.classList.toggle("hidden", tarjetas.length !== 0);
+    deudasTarjetasResumenList.innerHTML = "";
+    tarjetas.forEach(function (t) { deudasTarjetasResumenList.appendChild(buildTarjetaDeudaResumenRow(t)); });
+  }
+
+  var irADeudaTarjetasBtn = document.getElementById("ir-a-deuda-tarjetas-btn");
+  if (irADeudaTarjetasBtn) {
+    irADeudaTarjetasBtn.addEventListener("click", function () { activateTab("deuda-tarjetas"); });
   }
 
   // ---------- Deuda de tarjetas de crédito (tab aparte) ----------
