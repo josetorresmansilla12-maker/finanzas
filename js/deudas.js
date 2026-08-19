@@ -308,6 +308,19 @@
       }
       return;
     }
+
+    // Gasto propio sin deuda (ej. tu parte de una compra compartida): no hay
+    // dinero de nadie que registrar, así que no pasa por el modal de cobro.
+    // Es solo un recordatorio de "ya tengo esta plata separada para pagar la
+    // tarjeta" — no afecta ningún cálculo de deuda.
+    if (!esMeDeben(compra) && !esDeudaMia(compra)) {
+      if (aplicarMarcado(compraId, null, true)) {
+        renderAll();
+        showToast("Marcada como pagada: ya tienes esta plata separada.");
+      }
+      return;
+    }
+
     pedirMarcadoPagado(compra, null, Number(compra.monto) || 0);
   }
 

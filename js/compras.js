@@ -1221,7 +1221,7 @@
     tr.appendChild(tdComprador);
 
     var tdDebe = document.createElement("td");
-    var pendientes = miembros.filter(function (m) { return esMeDeben(m) && !m.pagada; }).length;
+    var pendientes = miembros.filter(function (m) { return !m.pagada; }).length;
     var debeTag = document.createElement("span");
     debeTag.className = "debe-tag " + (pendientes > 0 ? "me_deben" : "personal");
     debeTag.textContent = pendientes > 0 ? (pendientes + " sin pagar") : "Todo al día";
@@ -1243,9 +1243,10 @@
     detailTd.colSpan = 9;
     miembros.slice().sort(function (a, b) { return (a.compradorOtro || compradorNombre(a)).localeCompare(b.compradorOtro || compradorNombre(b)); })
       .forEach(function (m) {
-        // El botón de marcar pagada solo tiene sentido para quien generó una
-        // deuda (acreedor "mi"): la parte de "yo" es gasto propio, sin deuda.
-        var miniRow = buildCompraMiniRow(m, { conBotonPagada: esMeDeben(m) });
+        // La parte de "yo" también puede marcarse: ahí no hay deuda de nadie,
+        // pero sirve como recordatorio de "ya tengo esta plata separada
+        // para pagar la tarjeta" (toggleCompraPagada la trata distinto).
+        var miniRow = buildCompraMiniRow(m, { conBotonPagada: true });
 
         var editBtn = document.createElement("button");
         editBtn.type = "button";
