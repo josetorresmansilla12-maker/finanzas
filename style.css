@@ -1940,3 +1940,80 @@ polyline.trend-line {
   color: var(--color-warning);
   font-weight: 600;
 }
+
+/* ---------- Tarjetas de estadística clicables (resaltar compras) ---------- */
+.card-clickable {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.card-clickable:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.card-clickable:active {
+  transform: translateY(1px);
+}
+
+.card-clickable.card-activa {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.compras-resaltado-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--color-tint);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+tr.compra-resaltada td {
+  background: var(--color-tint);
+}
+
+tr.compra-resaltada {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* ---------- Compra compartida: fila única con detalle desplegable ---------- */
+.compartida-toggle-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.compartida-toggle-btn:hover {
+  color: var(--color-primary-dark);
+}
+
+tr.compra-row-compartida td {
+  border-bottom: none;
+}
+
+tr.compartida-detalle-row td {
+  padding: 0 0 14px 24px;
+  border-top: none;
+}
+
+tr.compartida-detalle-row.hidden {
+  display: none;
+}
+
+tr.compartida-detalle-row .compra-mini-row {
+  flex-wrap: wrap;
+}

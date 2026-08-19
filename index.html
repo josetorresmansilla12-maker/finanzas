@@ -39,25 +39,6 @@
 
     <!-- ===================== TAB: COMPRAS ===================== -->
     <section id="tab-compras" class="tab-panel">
-      <section class="summary-cards">
-        <div class="card">
-          <span class="card-label">Total gastado (periodo)</span>
-          <span class="card-value" id="compras-total-gastado">$0</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Gastos fijos</span>
-          <span class="card-value" id="compras-total-fijos">$0</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Suscripciones</span>
-          <span class="card-value" id="compras-total-suscripciones">$0</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Compras variables</span>
-          <span class="card-value" id="compras-total-variables">$0</span>
-        </div>
-      </section>
-
       <section class="form-section">
         <h2 id="form-title-compra">Registrar compra</h2>
         <p class="lede-hint">Solo el monto es obligatorio. Lo que no aplique a esta compra puedes saltarlo.</p>
@@ -162,8 +143,9 @@
           </div>
 
           <div class="field">
-            <label for="compra-fecha-pago">Fecha de pago / vencimiento <span class="label-hint">(opcional — se puede sugerir sola)</span></label>
+            <label for="compra-fecha-pago">Fecha de pago / vencimiento <span class="label-hint">(opcional)</span></label>
             <input type="date" id="compra-fecha-pago" />
+            <button type="button" id="compra-fecha-pago-sugerir-btn" class="btn btn-outline btn-small">📅 Usar vencimiento de la tarjeta</button>
           </div>
 
           <div class="field">
@@ -307,6 +289,11 @@
         </div>
       </section>
 
+      <div class="compras-resaltado-banner hidden" id="compras-resaltado-banner">
+        <span id="compras-resaltado-texto"></span>
+        <button type="button" id="compras-resaltado-quitar-btn" class="btn btn-secondary btn-small">Quitar resaltado</button>
+      </div>
+
       <section class="table-section">
         <div class="table-header">
           <h2>🏠 Gastos fijos y suscripciones</h2>
@@ -410,40 +397,45 @@
         <select id="estad-period-select"></select>
       </div>
 
-      <section class="summary-cards">
-        <div class="card">
+      <section class="summary-cards" id="estad-summary-cards">
+        <button type="button" class="card card-clickable" id="estad-card-gastado" data-resaltar="gastado">
           <span class="card-label">Total gastado</span>
           <span class="card-value" id="estad-total-gastado">$0</span>
           <span class="card-delta" id="estad-delta-gastado"></span>
-        </div>
-        <div class="card">
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-mio" data-resaltar="mio">
           <span class="card-label">De tu bolsillo</span>
           <span class="card-value" id="estad-total-mio">$0</span>
           <span class="card-delta" id="estad-delta-mio"></span>
-        </div>
-        <div class="card">
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-fijos" data-resaltar="fijos">
           <span class="card-label">Gastos fijos</span>
           <span class="card-value" id="estad-total-fijos">$0</span>
           <span class="card-delta" id="estad-delta-fijos"></span>
-        </div>
-        <div class="card">
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-variables" data-resaltar="variables">
           <span class="card-label">Compras variables</span>
           <span class="card-value" id="estad-total-variables">$0</span>
           <span class="card-delta" id="estad-delta-variables"></span>
-        </div>
-        <div class="card">
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-suscripciones" data-resaltar="suscripciones">
+          <span class="card-label">Suscripciones</span>
+          <span class="card-value" id="estad-total-suscripciones">$0</span>
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-debo-personas" data-resaltar="debo-personas">
           <span class="card-label">Debo a otras personas</span>
           <span class="card-value" id="estad-debo-personas">$0</span>
-        </div>
-        <div class="card">
+        </button>
+        <button type="button" class="card card-clickable" id="estad-card-me-deben" data-resaltar="me-deben">
           <span class="card-label">Me deben</span>
           <span class="card-value" id="estad-me-deben">$0</span>
-        </div>
+        </button>
         <div class="card">
           <span class="card-label">Debo en tarjetas</span>
           <span class="card-value" id="estad-debo-tarjetas">$0</span>
         </div>
       </section>
+      <p class="lede-hint">💡 Toca una tarjeta para resaltar, en la pestaña Compras, cuáles compras la componen. Tócala de nuevo para quitar el resaltado.</p>
 
       <section class="table-section">
         <div class="table-header">

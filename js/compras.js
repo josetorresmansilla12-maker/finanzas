@@ -68,11 +68,6 @@
   var comprasFilterTo = document.getElementById("compras-filter-to");
   var comprasFilterDatesClear = document.getElementById("compras-filter-dates-clear");
 
-  var comprasTotalGastadoEl = document.getElementById("compras-total-gastado");
-  var comprasTotalFijosEl = document.getElementById("compras-total-fijos");
-  var comprasTotalSuscripcionesEl = document.getElementById("compras-total-suscripciones");
-  var comprasTotalVariablesEl = document.getElementById("compras-total-variables");
-
   var fijosMonthsWrapper = document.getElementById("fijos-months-wrapper");
   var fijosEmptyState = document.getElementById("fijos-empty-state");
   var variablesMonthsWrapper = document.getElementById("variables-months-wrapper");
@@ -247,10 +242,10 @@
     if (!necesitaPersonaLibre) compraPersonaInput.value = "";
 
     // La fecha acordada solo tiene sentido cuando la compra genera una
-    // deuda real (a alguien se le debe, o alguien me debe a mí).
+    // deuda real (a alguien se le debe, o alguien me debe a mí). Queda
+    // siempre en blanco por defecto: el usuario la escribe si quiere.
     var esDeuda = acreedor !== "nadie";
     compraFechaAcordadaField.classList.toggle("hidden", !esDeuda);
-    if (esDeuda) sugerirFechaAcordadaDesdeTarjeta();
 
     // El sueldo solo cubre gastos personales míos: si la compra es para el
     // hogar o la hizo otra persona, no hay nada que descontar del sueldo.
@@ -311,35 +306,23 @@
     return value !== "efectivo" && value !== "debito";
   }
 
-  // Sugiere automáticamente la fecha de pago según el día de pago de la
-  // tarjeta elegida, pero solo si el usuario todavía no ha escrito una fecha
-  // (para no pisarle un valor que ya haya editado a mano).
-  compraMetodoPagoSelect.addEventListener("change", function () {
-    sugerirFechaAcordadaDesdeTarjeta();
-    if (compraFechaPagoInput.value) return;
-    if (!esMetodoPagoTarjeta(compraMetodoPagoSelect.value)) return;
-    var tarjeta = tarjetaById(compraMetodoPagoSelect.value);
-    if (!tarjeta || !tarjeta.diaPago) return;
-    var base = compraFechaInput.value || todayStamp();
-    compraFechaPagoInput.value = nextOccurrenceOfDay(Number(tarjeta.diaPago), base);
-  });
-
-  // Si la deuda se pagó con una tarjeta propia, "fecha de pago acordada" se
-  // rellena sola con el próximo vencimiento de esa tarjeta (el "primer
-  // vencimiento" al que hay que responder), pero solo si el campo está
-  // vacío: si ya se pactó una fecha distinta con la otra persona, no se
-  // pisa.
-  function sugerirFechaAcordadaDesdeTarjeta() {
-    if (compraFechaAcordadaInput.value) return;
-    var metodoPagoValue = compraMetodoPagoSelect.value;
-    if (!esMetodoPagoTarjeta(metodoPagoValue)) return;
-    var tarjeta = tarjetaById(metodoPagoValue);
-    if (!tarjeta) return;
-    var due = nextDueInfo(tarjeta);
-    if (!due) return;
-    compraFechaAcordadaInput.value = due.dueIso;
-    compraFechaAcordadaHint.textContent = "Sugerida según el próximo vencimiento de " + tarjeta.nombre +
-      ". Cámbiala si acordaron pagar antes.";
+  // Ninguna fecha se rellena sola con solo elegir la tarjeta: el usuario
+  // tiene que tocar el botón "Usar vencimiento de la tarjeta" a propósito.
+  var compraFechaPagoSugerirBtn = document.getElementById("compra-fecha-pago-sugerir-btn");
+  if (compraFechaPagoSugerirBtn) {
+    compraFechaPagoSugerirBtn.addEventListener("click", function () {
+      if (!esMetodoPagoTarjeta(compraMetodoPagoSelect.value)) {
+        showToast("Elige primero una tarjeta como método de pago.");
+        return;
+      }
+      var tarjeta = tarjetaById(compraMetodoPagoSelect.value);
+      if (!tarjeta || !tarjeta.diaPago) {
+        showToast("Esa tarjeta todavía no tiene un día de pago configurado.");
+        return;
+      }
+      var base = compraFechaInput.value || todayStamp();
+      compraFechaPagoInput.value = nextOccurrenceOfDay(Number(tarjeta.diaPago), base);
+    });
   }
 
   // ---------- Personas conocidas (datalist) ----------
@@ -586,7 +569,9 @@
     if (activa) {
       compraCompradorOtroField.classList.add("hidden");
       compraPersonaField.classList.add("hidden");
-      compraFechaAcordadaField.classList.add("hidden");
+      // La fecha acordada sí aplica: cada participante (menos tú) queda con
+      // una deuda, igual que cualquier otra compra que generó deuda.
+      compraFechaAcordadaField.classList.remove("hidden");
       compraOrigenField.classList.add("hidden");
       compraSobreField.classList.add("hidden");
       compraSuscripcionField.classList.add("hidden");
@@ -694,6 +679,7 @@
     var descripcion = compraDescripcionInput.value.trim() || null;
     var fecha = compraFechaInput.value || todayStamp();
     var fechaPago = compraFechaPagoInput.value || null;
+    var fechaPagoAcordada = compraFechaAcordadaInput.value || null;
     var metodoPagoValue = compraMetodoPagoSelect.value;
     var esTarjeta = esMetodoPagoTarjeta(metodoPagoValue);
     var notas = compraNotasInput.value.trim() || null;
@@ -716,6 +702,7 @@
         comprador: p.esOtro ? COMPRADOR_OTRO.id : p.personaId,
         compradorOtro: p.esOtro ? p.nombre : null,
         acreedor: esYo ? "nadie" : "mi",
+        fechaPagoAcordada: esYo ? null : fechaPagoAcordada,
         persona: null,
         esHogar: false,
         origenDinero: null,
@@ -1045,6 +1032,9 @@
 
   function buildCompraRow(compra) {
     var tr = document.createElement("tr");
+    if (typeof comprasResaltadasIds !== "undefined" && comprasResaltadasIds && comprasResaltadasIds.has(compra.id)) {
+      tr.className = "compra-resaltada";
+    }
 
     var tdFecha = document.createElement("td");
     tdFecha.textContent = formatDateDisplay(compra.fecha);
@@ -1074,26 +1064,6 @@
       fechaAcordadaNote.className = "recurrencia-proximo";
       fechaAcordadaNote.textContent = "📅 Pago acordado: " + formatDateDisplay(compra.fechaPagoAcordada);
       tdDesc.appendChild(fechaAcordadaNote);
-    }
-    if (compra.compartidaId) {
-      var shareBadge = document.createElement("span");
-      shareBadge.className = "compartida-badge";
-      shareBadge.title = "Compra compartida entre: " + compartidaParticipantesTexto(compra);
-      shareBadge.textContent = "🤝 compartida";
-      tdDesc.appendChild(shareBadge);
-
-      var shareNote = document.createElement("span");
-      shareNote.className = "recurrencia-proximo";
-      shareNote.textContent = "Con " + compartidaParticipantesTexto(compra) + " · total " + formatCurrency(compra.compartidaTotal);
-      tdDesc.appendChild(shareNote);
-
-      var itemsTexto = itemsResumenTexto(compra);
-      if (itemsTexto) {
-        var itemsNote = document.createElement("span");
-        itemsNote.className = "recurrencia-proximo";
-        itemsNote.textContent = "🧾 " + itemsTexto;
-        tdDesc.appendChild(itemsNote);
-      }
     }
     tr.appendChild(tdDesc);
 
@@ -1153,6 +1123,151 @@
     return tr;
   }
 
+  // Compras compartidas: cada participante tiene su propio registro (mismo
+  // compartidaId), pero en la tabla se muestran como una sola fila con el
+  // total y quiénes la componen. Tocarla despliega el detalle de cada
+  // participante (usando las mismas filas mini con botón de pagada que ya
+  // existen en la pestaña Deudas).
+  var comprasCompartidasExpandidas = new Set(); // compartidaId -> visible
+
+  function agruparParaTabla(items) {
+    var filas = [];
+    var vistos = {};
+    items.forEach(function (c) {
+      if (!c.compartidaId) {
+        filas.push({ tipo: "individual", compra: c });
+        return;
+      }
+      if (vistos[c.compartidaId]) return;
+      vistos[c.compartidaId] = true;
+      var miembros = items.filter(function (o) { return o.compartidaId === c.compartidaId; });
+      filas.push({ tipo: "grupo", miembros: miembros });
+    });
+    return filas;
+  }
+
+  function buildCompraGroupRow(miembros) {
+    var muestra = miembros[0];
+    var groupId = muestra.compartidaId;
+    var expandido = comprasCompartidasExpandidas.has(groupId);
+    var resaltada = typeof comprasResaltadasIds !== "undefined" && comprasResaltadasIds &&
+      miembros.some(function (m) { return comprasResaltadasIds.has(m.id); });
+
+    var tr = document.createElement("tr");
+    tr.className = "compra-row-compartida" + (resaltada ? " compra-resaltada" : "");
+
+    var tdFecha = document.createElement("td");
+    tdFecha.textContent = formatDateDisplay(muestra.fecha);
+    tr.appendChild(tdFecha);
+
+    var tdDesc = document.createElement("td");
+    var toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "compartida-toggle-btn";
+    toggleBtn.textContent = (expandido ? "▾ " : "▸ ") + compraDisplayName(muestra);
+    toggleBtn.addEventListener("click", function () {
+      if (comprasCompartidasExpandidas.has(groupId)) comprasCompartidasExpandidas.delete(groupId);
+      else comprasCompartidasExpandidas.add(groupId);
+      renderCompras();
+    });
+    tdDesc.appendChild(toggleBtn);
+
+    var shareBadge = document.createElement("span");
+    shareBadge.className = "compartida-badge";
+    shareBadge.textContent = "🤝 compartida";
+    tdDesc.appendChild(shareBadge);
+
+    var shareNote = document.createElement("span");
+    shareNote.className = "recurrencia-proximo";
+    shareNote.textContent = "Entre: " + compartidaParticipantesTexto(muestra);
+    tdDesc.appendChild(shareNote);
+
+    var itemsTexto = itemsResumenTexto(muestra);
+    if (itemsTexto) {
+      var itemsNote = document.createElement("span");
+      itemsNote.className = "recurrencia-proximo";
+      itemsNote.textContent = "🧾 " + itemsTexto;
+      tdDesc.appendChild(itemsNote);
+    }
+    // La fecha acordada es la misma para todo el grupo (un solo campo en el
+    // formulario), pero "yo" siempre la tiene en null: se busca en cualquier
+    // participante que sí la tenga, no solo en el primero de la lista.
+    var fechaAcordadaGrupo = miembros.map(function (m) { return m.fechaPagoAcordada; }).filter(Boolean)[0];
+    if (fechaAcordadaGrupo) {
+      var fechaNote = document.createElement("span");
+      fechaNote.className = "recurrencia-proximo";
+      fechaNote.textContent = "📅 Pago acordado: " + formatDateDisplay(fechaAcordadaGrupo);
+      tdDesc.appendChild(fechaNote);
+    }
+    tr.appendChild(tdDesc);
+
+    var tdCat = document.createElement("td");
+    var catTag = document.createElement("span");
+    catTag.className = "categoria-tag " + categoriaGroup(muestra);
+    catTag.textContent = categoriaLabel(muestra);
+    tdCat.appendChild(catTag);
+    tr.appendChild(tdCat);
+
+    var tdMetodo = document.createElement("td");
+    tdMetodo.textContent = metodoPagoLabel(muestra);
+    tr.appendChild(tdMetodo);
+
+    var tdCuotas = document.createElement("td");
+    tdCuotas.textContent = "—";
+    tr.appendChild(tdCuotas);
+
+    var tdComprador = document.createElement("td");
+    tdComprador.textContent = miembros.length + (miembros.length === 1 ? " persona" : " personas");
+    tr.appendChild(tdComprador);
+
+    var tdDebe = document.createElement("td");
+    var pendientes = miembros.filter(function (m) { return esMeDeben(m) && !m.pagada; }).length;
+    var debeTag = document.createElement("span");
+    debeTag.className = "debe-tag " + (pendientes > 0 ? "me_deben" : "personal");
+    debeTag.textContent = pendientes > 0 ? (pendientes + " sin pagar") : "Todo al día";
+    tdDebe.appendChild(debeTag);
+    tr.appendChild(tdDebe);
+
+    var tdMonto = document.createElement("td");
+    tdMonto.className = "col-value";
+    tdMonto.textContent = formatCurrency(muestra.compartidaTotal);
+    tr.appendChild(tdMonto);
+
+    var tdActions = document.createElement("td");
+    tdActions.className = "col-actions";
+    tr.appendChild(tdActions);
+
+    var detailTr = document.createElement("tr");
+    detailTr.className = "compartida-detalle-row" + (expandido ? "" : " hidden");
+    var detailTd = document.createElement("td");
+    detailTd.colSpan = 9;
+    miembros.slice().sort(function (a, b) { return (a.compradorOtro || compradorNombre(a)).localeCompare(b.compradorOtro || compradorNombre(b)); })
+      .forEach(function (m) {
+        // El botón de marcar pagada solo tiene sentido para quien generó una
+        // deuda (acreedor "mi"): la parte de "yo" es gasto propio, sin deuda.
+        var miniRow = buildCompraMiniRow(m, { conBotonPagada: esMeDeben(m) });
+
+        var editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn btn-secondary btn-small";
+        editBtn.textContent = "Editar";
+        editBtn.addEventListener("click", function () { startEditCompra(m.id); });
+        miniRow.appendChild(editBtn);
+
+        var deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-danger btn-small";
+        deleteBtn.textContent = "Eliminar";
+        deleteBtn.addEventListener("click", function () { requestDelete("compra", m.id); });
+        miniRow.appendChild(deleteBtn);
+
+        detailTd.appendChild(miniRow);
+      });
+    detailTr.appendChild(detailTd);
+
+    return [tr, detailTr];
+  }
+
   function renderMonthGroups(wrapperEl, emptyEl, list) {
     wrapperEl.innerHTML = "";
     emptyEl.classList.toggle("hidden", list.length !== 0);
@@ -1168,6 +1283,7 @@
     Object.keys(byMonth).sort().reverse().forEach(function (key, i) {
       var items = byMonth[key].sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
       var total = items.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+      var filas = agruparParaTabla(items);
 
       var details = document.createElement("details");
       details.className = "month-group";
@@ -1178,7 +1294,7 @@
       titleSpan.textContent = monthLabel(key);
       var metaSpan = document.createElement("span");
       metaSpan.className = "month-meta";
-      metaSpan.textContent = items.length + (items.length === 1 ? " compra · " : " compras · ") + formatCurrency(total);
+      metaSpan.textContent = filas.length + (filas.length === 1 ? " compra · " : " compras · ") + formatCurrency(total);
       summary.appendChild(titleSpan);
       summary.appendChild(metaSpan);
       details.appendChild(summary);
@@ -1190,7 +1306,13 @@
       thead.innerHTML = "<tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Método</th><th>Cuotas</th><th>Compró</th><th>Deuda</th><th class=\"col-value\">Monto</th><th class=\"col-actions\">Acciones</th></tr>";
       table.appendChild(thead);
       var tbody = document.createElement("tbody");
-      items.forEach(function (c) { tbody.appendChild(buildCompraRow(c)); });
+      filas.forEach(function (fila) {
+        if (fila.tipo === "grupo") {
+          buildCompraGroupRow(fila.miembros).forEach(function (tr) { tbody.appendChild(tr); });
+        } else {
+          tbody.appendChild(buildCompraRow(fila.compra));
+        }
+      });
       table.appendChild(tbody);
       tableWrap.appendChild(table);
       details.appendChild(tableWrap);
@@ -1235,16 +1357,6 @@
 
   function renderCompras() {
     var filtered = applyComprasFilters(loadCompras());
-
-    var totalGastado = filtered.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-    var totalFijos = filtered.filter(function (c) { return categoriaGroup(c) === "fijo"; }).reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-    var totalSuscripciones = filtered.filter(function (c) { return categoriaGroup(c) === "suscripcion"; }).reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-    var totalVariables = filtered.filter(function (c) { return categoriaGroup(c) === "variable"; }).reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-
-    comprasTotalGastadoEl.textContent = formatCurrency(totalGastado);
-    comprasTotalFijosEl.textContent = formatCurrency(totalFijos);
-    comprasTotalSuscripcionesEl.textContent = formatCurrency(totalSuscripciones);
-    comprasTotalVariablesEl.textContent = formatCurrency(totalVariables);
 
     renderMonthGroups(fijosMonthsWrapper, fijosEmptyState, filtered.filter(function (c) { return categoriaGroup(c) !== "variable"; }));
     renderMonthGroups(variablesMonthsWrapper, variablesEmptyState, filtered.filter(function (c) { return categoriaGroup(c) === "variable"; }));

@@ -9,6 +9,7 @@
   var estadTotalFijosEl = document.getElementById("estad-total-fijos");
   var estadTotalMioEl = document.getElementById("estad-total-mio");
   var estadTotalVariablesEl = document.getElementById("estad-total-variables");
+  var estadTotalSuscripcionesEl = document.getElementById("estad-total-suscripciones");
   var estadDeboPersonasEl = document.getElementById("estad-debo-personas");
   var estadMeDebenEl = document.getElementById("estad-me-deben");
   var estadDeboTarjetasEl = document.getElementById("estad-debo-tarjetas");
@@ -584,23 +585,29 @@
     });
   }
 
-  function renderEstadisticas() {
-    populateEstadPeriods();
-
-    var compras = loadCompras().filter(function (c) {
+  function comprasDelPeriodo() {
+    return loadCompras().filter(function (c) {
       if (esCargoFuturo(c)) return false;
       return currentEstadPeriod === "all" || monthKey(c.fecha) === currentEstadPeriod;
     });
+  }
+
+  function renderEstadisticas() {
+    populateEstadPeriods();
+
+    var compras = comprasDelPeriodo();
 
     var totalGastado = sumaDe(compras);
     var totalMio = sumaDe(compras.filter(esCompraMia));
     var totalFijos = sumaDe(compras.filter(function (c) { return categoriaGroup(c) === "fijo"; }));
     var totalVariables = sumaDe(compras.filter(function (c) { return categoriaGroup(c) === "variable"; }));
+    var totalSuscripciones = sumaDe(compras.filter(function (c) { return categoriaGroup(c) === "suscripcion"; }));
 
     estadTotalGastadoEl.textContent = formatCurrency(totalGastado);
     estadTotalMioEl.textContent = formatCurrency(totalMio);
     estadTotalFijosEl.textContent = formatCurrency(totalFijos);
     estadTotalVariablesEl.textContent = formatCurrency(totalVariables);
+    estadTotalSuscripcionesEl.textContent = formatCurrency(totalSuscripciones);
 
     renderDeltas(totalGastado, totalMio, totalFijos, totalVariables);
 
@@ -632,7 +639,109 @@
     renderAportesHogar();
     renderPersonalesTerceros(compras);
     renderTrendChart();
+    actualizarTarjetasResaltado();
   }
+
+  // =========================================================
+  // Resaltar en Compras las compras que componen una estadística
+  //
+  // Al tocar una tarjeta de estadística se guarda el conjunto de ids de
+  // compras correspondiente y se salta a la pestaña Compras, donde
+  // buildCompraRow() (compras.js) le agrega una clase visual a esas filas.
+  // Tocar la misma tarjeta de nuevo quita el resaltado.
+  // =========================================================
+
+  var comprasResaltadasIds = null; // Set<string> | null
+  var comprasResaltadasTipo = null;
+
+  var RESALTAR_LABELS = {
+    "gastado": "Total gastado",
+    "mio": "De tu bolsillo",
+    "fijos": "Gastos fijos",
+    "variables": "Compras variables",
+    "suscripciones": "Suscripciones",
+    "debo-personas": "Debo a otras personas",
+    "me-deben": "Me deben"
+  };
+
+  function compraTienePendiente(c) {
+    if (c.tipo === "cuotas") {
+      var pagadas = Array.isArray(c.cuotasPagadas) ? c.cuotasPagadas : [];
+      return buildCuotaSchedule(c).some(function (_, i) { return !pagadas[i]; });
+    }
+    return !c.pagada;
+  }
+
+  function idsParaResaltar(tipo) {
+    var periodo = comprasDelPeriodo();
+    var todas = loadCompras().filter(function (c) { return !esCargoFuturo(c); });
+    var lista;
+    if (tipo === "gastado") lista = periodo;
+    else if (tipo === "mio") lista = periodo.filter(esCompraMia);
+    else if (tipo === "fijos") lista = periodo.filter(function (c) { return categoriaGroup(c) === "fijo"; });
+    else if (tipo === "variables") lista = periodo.filter(function (c) { return categoriaGroup(c) === "variable"; });
+    else if (tipo === "suscripciones") lista = periodo.filter(function (c) { return categoriaGroup(c) === "suscripcion"; });
+    else if (tipo === "debo-personas") lista = todas.filter(function (c) { return esDeudaMia(c) && compraTienePendiente(c); });
+    else if (tipo === "me-deben") lista = todas.filter(function (c) { return esMeDeben(c) && compraTienePendiente(c); });
+    else lista = [];
+    return lista.map(function (c) { return c.id; });
+  }
+
+  function limpiarFiltrosCompras() {
+    document.getElementById("compras-filter-texto").value = "";
+    document.getElementById("compras-filter-tarjeta").value = "";
+    document.getElementById("compras-filter-comprador").value = "";
+    document.getElementById("compras-filter-acreedor").value = "";
+    document.getElementById("compras-filter-from").value = "";
+    document.getElementById("compras-filter-to").value = "";
+    if (typeof updateComprasFilterClearBtn === "function") updateComprasFilterClearBtn();
+  }
+
+  function actualizarBannerResaltado() {
+    var banner = document.getElementById("compras-resaltado-banner");
+    var texto = document.getElementById("compras-resaltado-texto");
+    if (!banner || !texto) return;
+    banner.classList.toggle("hidden", !comprasResaltadasIds);
+    if (comprasResaltadasIds) {
+      texto.textContent = "🔎 Mostrando " + comprasResaltadasIds.size + " compra(s) de: " + RESALTAR_LABELS[comprasResaltadasTipo];
+    }
+  }
+
+  function actualizarTarjetasResaltado() {
+    document.querySelectorAll(".card-clickable").forEach(function (btn) {
+      btn.classList.toggle("card-activa", !!comprasResaltadasIds && btn.dataset.resaltar === comprasResaltadasTipo);
+    });
+  }
+
+  function quitarResaltado() {
+    comprasResaltadasIds = null;
+    comprasResaltadasTipo = null;
+    actualizarBannerResaltado();
+    actualizarTarjetasResaltado();
+    renderCompras();
+  }
+
+  document.querySelectorAll(".card-clickable").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var tipo = btn.dataset.resaltar;
+      if (comprasResaltadasTipo === tipo) {
+        quitarResaltado();
+        return;
+      }
+      comprasResaltadasTipo = tipo;
+      comprasResaltadasIds = new Set(idsParaResaltar(tipo));
+      limpiarFiltrosCompras();
+      activateTab("compras");
+      renderCompras();
+      actualizarBannerResaltado();
+      actualizarTarjetasResaltado();
+      var primera = document.querySelector(".compra-resaltada");
+      if (primera) primera.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  var quitarResaltadoBtn = document.getElementById("compras-resaltado-quitar-btn");
+  if (quitarResaltadoBtn) quitarResaltadoBtn.addEventListener("click", quitarResaltado);
 
   function renderAll() {
     renderPersonas();

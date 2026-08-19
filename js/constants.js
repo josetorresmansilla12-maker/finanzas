@@ -23,6 +23,7 @@
     { id: "luz", label: "Luz", group: "fijo" },
     { id: "gas", label: "Gas", group: "fijo" },
     { id: "gnc", label: "GNC", group: "fijo" },
+    { id: "bencina", label: "Bencina", group: "fijo" },
     { id: "internet", label: "Internet", group: "fijo" },
     { id: "tv_cable", label: "TV Cable", group: "fijo" },
     { id: "arriendo", label: "Arriendo / Gastos comunes", group: "fijo" },
@@ -41,6 +42,7 @@
     { id: "tecnologia", label: "Tecnología", group: "variable" },
     { id: "salud", label: "Salud", group: "variable" },
     { id: "ocio", label: "Ocio / Entretenimiento", group: "variable" },
+    { id: "regalos", label: "Regalos", group: "variable" },
     { id: "autos", label: "Autos", group: "variable" },
     { id: "otro_variable", label: "Otra compra variable", group: "variable" }
   ];
