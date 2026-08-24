@@ -727,6 +727,52 @@
     }
   }
 
+  // Guarda los cambios hechos con startEditCompraGrupo: actualiza los campos
+  // comunes en las N compras del grupo, sin tocar monto/comprador/acreedor
+  // de cada una (eso se edita aparte, por persona).
+  function submitCompartidaGrupoEdit() {
+    var groupId = editingCompartidaGrupoId;
+    var compras = loadCompras();
+    var miembros = compras.filter(function (c) { return c.compartidaId === groupId; });
+    if (!miembros.length) {
+      resetCompraForm();
+      return;
+    }
+
+    var categoria = compraCategoriaSelect.value;
+    var categoriaOtro = isOtroCategoria(categoria) ? compraCategoriaOtherInput.value.trim() : null;
+    var auto = categoria === "autos" ? selectedAuto() : null;
+    var descripcion = compraDescripcionInput.value.trim() || null;
+    var fecha = compraFechaInput.value || todayStamp();
+    var fechaPago = compraFechaPagoInput.value || null;
+    var fechaPagoAcordada = compraFechaAcordadaInput.value || null;
+    var metodoPagoValue = compraMetodoPagoSelect.value;
+    var esTarjeta = esMetodoPagoTarjeta(metodoPagoValue);
+    var notas = compraNotasInput.value.trim() || null;
+
+    compras.forEach(function (c) {
+      if (c.compartidaId !== groupId) return;
+      c.categoria = categoria;
+      c.categoriaOtro = categoriaOtro;
+      c.auto = auto;
+      c.descripcion = descripcion;
+      c.fecha = fecha;
+      c.fechaPago = fechaPago;
+      c.tarjetaId = esTarjeta ? metodoPagoValue : null;
+      c.metodoPago = esTarjeta ? null : metodoPagoValue;
+      c.notas = notas;
+      // "Yo" nunca tiene fecha acordada: no es una deuda con nadie.
+      c.fechaPagoAcordada = (c.acreedor && c.acreedor !== "nadie") ? fechaPagoAcordada : null;
+      c.lastEditedAt = Date.now();
+    });
+
+    if (saveCompras(compras)) {
+      resetCompraForm();
+      renderAll();
+      showToast("Compra compartida actualizada (" + miembros.length + " personas).");
+    }
+  }
+
   // ---------- Validación ----------
 
   function clearCompraErrors() {
@@ -778,6 +824,7 @@
     compraForm.reset();
     compraIdInput.value = "";
     editingCompraId = null;
+    editingCompartidaGrupoId = null;
     clearCompraErrors();
     compraFechaInput.value = todayStamp();
     compraFechaAcordadaHint.textContent = "";
@@ -871,6 +918,79 @@
     compraForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Edita los datos comunes de una compra compartida completa (categoría,
+  // descripción, fecha, método de pago, fecha de pago, fecha acordada,
+  // notas), aplicando el cambio a las N compras del grupo a la vez. Los
+  // montos, quién compró y quién debe qué son por persona y se editan
+  // aparte, abriendo el detalle de cada una (startEditCompra).
+  function startEditCompraGrupo(groupId) {
+    var miembros = loadCompras().filter(function (c) { return c.compartidaId === groupId; });
+    if (!miembros.length) return;
+    var muestra = miembros[0];
+
+    editingCompraId = null;
+    editingCompartidaGrupoId = groupId;
+    compraIdInput.value = "";
+
+    document.querySelector('input[name="compra-type"][value="unico"]').checked = true;
+    setCompraType("unico");
+    populateCategoriaSelect();
+    compraCategoriaSelect.value = muestra.categoria;
+    compraCategoriaOtherInput.value = muestra.categoriaOtro || "";
+    compraDescripcionInput.value = muestra.descripcion || "";
+    compraFechaInput.value = muestra.fecha;
+    compraCuotasCountInput.value = "";
+    compraTieneInteresInput.checked = false;
+    compraFechaPagoInput.value = muestra.fechaPago || "";
+    populateMetodoPagoSelect(compraMetodoPagoSelect);
+    compraMetodoPagoSelect.value = muestra.tarjetaId || muestra.metodoPago || "efectivo";
+    compraSuscripcionRepiteInput.checked = false;
+    compraSuscripcionDetalleField.classList.add("hidden");
+    buildAutoOptions();
+    if (muestra.auto) {
+      var autoRadio = compraAutoOptionsEl.querySelector('input[name="compra-auto"][value="' + muestra.auto + '"]');
+      if (autoRadio) autoRadio.checked = true;
+    }
+
+    document.querySelector('input[name="compra-compartida"][value="no"]').checked = true;
+    resetCompartidaLists();
+    updateCompartidaDependentFields();
+    updateCategoriaDependentFields();
+
+    // Estos campos son por persona (monto, comprador, hogar, a quién se le
+    // debe): no tienen sentido al editar el grupo completo, así que se
+    // ocultan pase lo que pase.
+    compraMontoField.classList.add("hidden");
+    compraTipoPagoField.classList.add("hidden");
+    compraCompradorField.classList.add("hidden");
+    compraCompradorOtroField.classList.add("hidden");
+    compraHogarField.classList.add("hidden");
+    compraAcreedorField.classList.add("hidden");
+    compraPersonaField.classList.add("hidden");
+    compraOrigenField.classList.add("hidden");
+    compraSobreField.classList.add("hidden");
+    compraSuscripcionField.classList.add("hidden");
+
+    compraFechaAcordadaField.classList.remove("hidden");
+    var fechaAcordadaGrupo = miembros.map(function (m) { return m.fechaPagoAcordada; }).filter(Boolean)[0];
+    compraFechaAcordadaInput.value = fechaAcordadaGrupo || "";
+    compraFechaAcordadaHint.textContent = "";
+
+    compraNotasInput.value = muestra.notas || "";
+
+    compraCompartidaEditNotice.textContent = "🤝 Estás editando los datos comunes de esta compra compartida " +
+      "(categoría, descripción, fecha, método de pago, notas) — se aplican a las " + miembros.length +
+      " personas a la vez. Los montos y quién debe qué se editan aparte, abriendo el detalle de cada persona.";
+    compraCompartidaEditNotice.classList.remove("hidden");
+
+    submitCompraBtn.textContent = "Guardar cambios del grupo";
+    formTitleCompra.textContent = "Editar compra compartida";
+    cancelEditCompraBtn.classList.remove("hidden");
+    clearCompraErrors();
+    activateTab("compras");
+    compraForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   cancelEditCompraBtn.addEventListener("click", resetCompraForm);
 
   // Genera las fechas mensuales de una suscripción recurrente: la fecha de
@@ -896,6 +1016,11 @@
 
   compraForm.addEventListener("submit", function (e) {
     e.preventDefault();
+
+    if (editingCompartidaGrupoId) {
+      submitCompartidaGrupoEdit();
+      return;
+    }
 
     // Una compra compartida sigue un camino totalmente aparte: genera varias
     // compras (una por participante) en vez de una sola. Solo aplica al
@@ -1235,6 +1360,13 @@
 
     var tdActions = document.createElement("td");
     tdActions.className = "col-actions";
+    var groupEditBtn = document.createElement("button");
+    groupEditBtn.type = "button";
+    groupEditBtn.className = "btn btn-secondary btn-small";
+    groupEditBtn.textContent = "Editar";
+    groupEditBtn.title = "Editar categoría, fecha, método de pago y notas de toda la compra compartida";
+    groupEditBtn.addEventListener("click", function () { startEditCompraGrupo(groupId); });
+    tdActions.appendChild(groupEditBtn);
     tr.appendChild(tdActions);
 
     var detailTr = document.createElement("tr");

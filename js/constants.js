@@ -97,6 +97,7 @@
 
   var editingTarjetaId = null;
   var editingCompraId = null;
+  var editingCompartidaGrupoId = null;
   var editingSueldoId = null;
   var pendingDelete = null; // { type: "tarjeta" | "compra" | "abono" | "sueldo", id }
   var currentEstadPeriod = "all";
