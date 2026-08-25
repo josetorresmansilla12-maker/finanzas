@@ -33,6 +33,7 @@
     <button type="button" class="tab-btn" id="tab-estadisticas-btn" data-tab="estadisticas">Estadísticas</button>
     <button type="button" class="tab-btn" id="tab-sueldo-btn" data-tab="sueldo">Mi Sueldo</button>
     <button type="button" class="tab-btn" id="tab-tarjetas-btn" data-tab="tarjetas">Tarjetas</button>
+    <button type="button" class="tab-btn" id="tab-informes-btn" data-tab="informes">Informes</button>
   </nav>
 
   <main class="container">
@@ -854,6 +855,56 @@
         <button type="button" id="delete-all-data-btn" class="btn btn-danger">Eliminar todos los datos</button>
       </section>
     </section>
+
+    <!-- ===================== TAB: INFORMES ===================== -->
+    <section id="tab-informes" class="tab-panel hidden">
+      <section class="form-section informe-filtros-section">
+        <h2>📄 Generar informe</h2>
+        <p class="lede-hint">Pensado para entregar a otra persona: un documento claro de qué se le debe, en qué se gastó su dinero y cuándo corresponde el pago. No es una planilla de números — es para leer.</p>
+
+        <div class="field">
+          <label for="informe-tipo-gasto">Tipo de gasto</label>
+          <select id="informe-tipo-gasto">
+            <option value="all">Todos los tipos de gasto</option>
+            <option value="fijo">Gastos fijos</option>
+            <option value="suscripcion">Suscripciones/Streaming</option>
+            <option value="variable">Compras variables</option>
+          </select>
+        </div>
+
+        <div class="field owner-field">
+          <label>Personas a incluir <span class="label-hint">(opcional — sin marcar ninguna se incluyen todas las deudas)</span></label>
+          <div id="informe-personas-list" class="radio-group"></div>
+          <span class="label-hint">Marca "Yo" para incluir además tus gastos propios, sin deuda asociada.</span>
+        </div>
+
+        <div class="field owner-field">
+          <label>Rango de fechas <span class="label-hint">(opcional)</span></label>
+          <div class="ventas-filter-dates">
+            <label for="informe-fecha-desde">Desde</label>
+            <input type="date" id="informe-fecha-desde" />
+            <label for="informe-fecha-hasta">Hasta</label>
+            <input type="date" id="informe-fecha-hasta" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="informe-generar-btn" class="btn btn-primary">Generar informe</button>
+          <button type="button" id="informe-limpiar-btn" class="btn btn-secondary">Limpiar filtros</button>
+        </div>
+      </section>
+
+      <section class="table-section informe-resultado-section">
+        <div class="table-header">
+          <h2>Vista previa</h2>
+          <div class="table-actions">
+            <button type="button" id="informe-imprimir-btn" class="btn btn-outline hidden">🖨️ Imprimir / Guardar como PDF</button>
+          </div>
+        </div>
+        <p id="informe-empty-state" class="empty-state">Elige los filtros de arriba y toca "Generar informe".</p>
+        <div id="informe-resultado"></div>
+      </section>
+    </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
@@ -945,6 +996,7 @@
   <script src="js/deudas.js"></script>
   <script src="js/sueldo.js"></script>
   <script src="js/estadisticas.js"></script>
+  <script src="js/informes.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/sync.js"></script>

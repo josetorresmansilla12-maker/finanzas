@@ -169,6 +169,12 @@
     updateDeudaDependentFields();
   });
 
+  // Corrige mayúscula inicial y tildes/ñ seguras al salir del campo, no
+  // mientras se escribe (para no mover el cursor a mitad de la palabra).
+  compraDescripcionInput.addEventListener("blur", function () {
+    compraDescripcionInput.value = corregirOrtografia(compraDescripcionInput.value);
+  });
+
   compraSuscripcionRepiteInput.addEventListener("change", function () {
     compraSuscripcionDetalleField.classList.toggle("hidden", !compraSuscripcionRepiteInput.checked);
   });
@@ -495,6 +501,7 @@
     desc.type = "text";
     desc.className = "item-descripcion";
     desc.placeholder = "Ej: Detergente";
+    desc.addEventListener("blur", function () { desc.value = corregirOrtografia(desc.value); });
     row.appendChild(desc);
 
     var monto = document.createElement("input");
@@ -1184,12 +1191,6 @@
         tdDesc.appendChild(proxNote);
       }
     }
-    if (compra.fechaPagoAcordada) {
-      var fechaAcordadaNote = document.createElement("span");
-      fechaAcordadaNote.className = "recurrencia-proximo";
-      fechaAcordadaNote.textContent = "📅 Pago acordado: " + formatDateDisplay(compra.fechaPagoAcordada);
-      tdDesc.appendChild(fechaAcordadaNote);
-    }
     tr.appendChild(tdDesc);
 
     var tdCat = document.createElement("td");
@@ -1313,16 +1314,6 @@
       itemsNote.className = "recurrencia-proximo";
       itemsNote.textContent = "🧾 " + itemsTexto;
       tdDesc.appendChild(itemsNote);
-    }
-    // La fecha acordada es la misma para todo el grupo (un solo campo en el
-    // formulario), pero "yo" siempre la tiene en null: se busca en cualquier
-    // participante que sí la tenga, no solo en el primero de la lista.
-    var fechaAcordadaGrupo = miembros.map(function (m) { return m.fechaPagoAcordada; }).filter(Boolean)[0];
-    if (fechaAcordadaGrupo) {
-      var fechaNote = document.createElement("span");
-      fechaNote.className = "recurrencia-proximo";
-      fechaNote.textContent = "📅 Pago acordado: " + formatDateDisplay(fechaAcordadaGrupo);
-      tdDesc.appendChild(fechaNote);
     }
     tr.appendChild(tdDesc);
 

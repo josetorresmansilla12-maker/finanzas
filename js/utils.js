@@ -157,6 +157,60 @@
     }, actionLabel ? 5000 : 2500);
   }
 
+  // ---------- Corrección ligera de descripciones ----------
+  //
+  // No es un corrector ortográfico completo (la app no usa librerías externas
+  // ni conexión a internet): solo agrega la mayúscula inicial y arregla un
+  // conjunto de tildes/ñ que son seguras de corregir sin riesgo de cambiar el
+  // sentido — palabras sin otra forma válida en español (ej. "telefono" no
+  // significa nada distinto de "teléfono"), más dos reglas generales sin
+  // excepciones (sustantivos terminados en "-cion"/"-sion" siempre llevan
+  // tilde). Nunca reemplaza una palabra por otra ni reordena el texto.
+  var CORRECCION_PALABRAS = {
+    telefono: "teléfono", numero: "número", articulo: "artículo", musica: "música",
+    pelicula: "película", peliculas: "películas", camara: "cámara", camaras: "cámaras",
+    credito: "crédito", debito: "débito", medico: "médico", medica: "médica",
+    publico: "público", publica: "pública", basico: "básico", basica: "básica",
+    electronico: "electrónico", electronica: "electrónica",
+    electrodomestico: "electrodoméstico", electrodomesticos: "electrodomésticos",
+    utiles: "útiles", ultimo: "último", ultima: "última", unico: "único", unica: "única",
+    rapido: "rápido", rapida: "rápida", facil: "fácil", dificil: "difícil",
+    jabon: "jabón", colchon: "colchón", cancion: "canción", canciones: "canciones",
+    television: "televisión", jamon: "jamón", salmon: "salmón", limon: "limón",
+    camion: "camión", avion: "avión", algodon: "algodón", boton: "botón",
+    raton: "ratón", cajon: "cajón", balon: "balón", sillon: "sillón",
+    calzon: "calzón", pantalon: "pantalón", corazon: "corazón", cordon: "cordón",
+    tapon: "tapón", porton: "portón", kilometro: "kilómetro", kilometros: "kilómetros",
+    termometro: "termómetro", sabado: "sábado", miercoles: "miércoles",
+    cumpleanos: "cumpleaños", nino: "niño", nina: "niña", ninos: "niños", ninas: "niñas",
+    bano: "baño", banos: "baños", senor: "señor", senora: "señora", manana: "mañana",
+    pequeno: "pequeño", pequena: "pequeña", diseno: "diseño", tamano: "tamaño"
+  };
+
+  function preservarMayuscula(original, corregida) {
+    if (original.charAt(0) === original.charAt(0).toUpperCase() && /[a-zA-ZÁÉÍÓÚÑ]/.test(original.charAt(0))) {
+      return corregida.charAt(0).toUpperCase() + corregida.slice(1);
+    }
+    return corregida;
+  }
+
+  function corregirOrtografia(texto) {
+    if (!texto) return texto;
+    var corregido = texto.replace(/[a-záéíóúñA-ZÁÉÍÓÚÑ]+/g, function (palabra) {
+      var minus = palabra.toLowerCase();
+      var fix = CORRECCION_PALABRAS[minus];
+      if (!fix && /cion$/.test(minus)) fix = minus.slice(0, -4) + "ción";
+      if (!fix && /sion$/.test(minus)) fix = minus.slice(0, -4) + "sión";
+      return fix ? preservarMayuscula(palabra, fix) : palabra;
+    });
+    // Mayúscula inicial: al principio del texto y después de cada punto,
+    // signo de exclamación o interrogación seguido de espacio.
+    corregido = corregido.replace(/(^\s*|[.!?]\s+)([a-záéíóúñ])/g, function (m, pre, letra) {
+      return pre + letra.toUpperCase();
+    });
+    return corregido;
+  }
+
   function csvEscape(value) {
     var str = String(value == null ? "" : value);
     if (/[",\n]/.test(str)) {

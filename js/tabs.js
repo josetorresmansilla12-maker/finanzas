@@ -8,6 +8,7 @@
   var tabEstadisticasBtn = document.getElementById("tab-estadisticas-btn");
   var tabSueldoBtn = document.getElementById("tab-sueldo-btn");
   var tabTarjetasBtn = document.getElementById("tab-tarjetas-btn");
+  var tabInformesBtn = document.getElementById("tab-informes-btn");
 
   var tabComprasPanel = document.getElementById("tab-compras");
   var tabDeudasPanel = document.getElementById("tab-deudas");
@@ -15,6 +16,7 @@
   var tabEstadisticasPanel = document.getElementById("tab-estadisticas");
   var tabSueldoPanel = document.getElementById("tab-sueldo");
   var tabTarjetasPanel = document.getElementById("tab-tarjetas");
+  var tabInformesPanel = document.getElementById("tab-informes");
 
   function showTabPanels(tab) {
     tabComprasPanel.classList.toggle("hidden", tab !== "compras");
@@ -23,6 +25,7 @@
     tabEstadisticasPanel.classList.toggle("hidden", tab !== "estadisticas");
     tabSueldoPanel.classList.toggle("hidden", tab !== "sueldo");
     tabTarjetasPanel.classList.toggle("hidden", tab !== "tarjetas");
+    tabInformesPanel.classList.toggle("hidden", tab !== "informes");
   }
 
   function activateTab(tab) {
@@ -32,12 +35,14 @@
     tabEstadisticasBtn.classList.toggle("active", tab === "estadisticas");
     tabSueldoBtn.classList.toggle("active", tab === "sueldo");
     tabTarjetasBtn.classList.toggle("active", tab === "tarjetas");
+    tabInformesBtn.classList.toggle("active", tab === "informes");
     showTabPanels(tab);
 
     if (tab === "deudas") renderDeudas();
     if (tab === "deuda-tarjetas") renderDeudaTarjetas();
     if (tab === "estadisticas") renderEstadisticas();
     if (tab === "sueldo") renderSueldo();
+    if (tab === "informes") renderInformesFiltros();
   }
 
   tabComprasBtn.addEventListener("click", function () { activateTab("compras"); });
@@ -46,3 +51,4 @@
   tabEstadisticasBtn.addEventListener("click", function () { activateTab("estadisticas"); });
   tabSueldoBtn.addEventListener("click", function () { activateTab("sueldo"); });
   tabTarjetasBtn.addEventListener("click", function () { activateTab("tarjetas"); });
+  tabInformesBtn.addEventListener("click", function () { activateTab("informes"); });

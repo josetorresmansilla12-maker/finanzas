@@ -2017,3 +2017,67 @@ tr.compartida-detalle-row.hidden {
 tr.compartida-detalle-row .compra-mini-row {
   flex-wrap: wrap;
 }
+
+/* ---------- Informes ---------- */
+
+.informe-report-header h2 {
+  margin: 0 0 4px;
+}
+
+.informe-grupo {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.informe-grupo:first-of-type {
+  margin-top: 20px;
+}
+
+.informe-grupo h3 {
+  margin: 0 0 4px;
+}
+
+.informe-grupo-total {
+  margin: 10px 2px 0;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.informe-total-general {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  padding: 16px 18px;
+  background: var(--color-tint);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+/* Al imprimir (o "Guardar como PDF"): se oculta todo menos el informe
+   generado, para que quede un documento limpio y legible sin la interfaz
+   de la app alrededor. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #informe-resultado,
+  #informe-resultado * {
+    visibility: visible;
+  }
+  #informe-resultado {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .informe-grupo {
+    break-inside: avoid;
+  }
+  table {
+    font-size: 0.85rem;
+  }
+}

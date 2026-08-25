@@ -751,6 +751,7 @@
     renderDeudaTarjetas();
     renderEstadisticas();
     renderSueldo();
+    renderInformesFiltros();
     renderAppAlerts();
     updateTrashCount();
   }
