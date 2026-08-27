@@ -4,16 +4,19 @@
   // INFORMES — documento imprimible para entregar a otra persona
   //
   // No reinventa el cálculo de deudas: agrupa las mismas compras que ya se
-  // ven en "Deudas" (por acreedor o por deudor), pero el total "pendiente"
-  // de cada fila sale directo de la compra (monto - lo ya marcado como
-  // pagado), no del balance de abonos de la persona. Así el informe sigue
-  // siendo correcto aunque se filtre por tipo de gasto o por fecha, casos
-  // donde el balance oficial (que mezcla abonos sin categoría) dejaría de
-  // calzar con lo que realmente se está mostrando.
+  // ven en "Deudas" (por acreedor o por deudor). Para cada compra se
+  // calculan DOS pendientes por separado, no uno solo:
+  //   - "este mes": si es en cuotas, el valor de la próxima cuota sin pagar;
+  //     si no, el monto completo si está pendiente. Es lo que hay que
+  //     juntar ahora.
+  //   - "total": todo lo que falta, incluidas las cuotas de meses futuros.
+  // Antes el informe solo mostraba el total, lo que hacía ver como "deuda
+  // de este mes" algo que en realidad se paga en varias cuotas futuras.
   //
-  // Cada grupo (una persona, una dirección de deuda) se dibuja reusando el
-  // mismo look de las tarjetas de "Deudas" (.deuda-card), para que el
-  // informe se sienta parte de la app y no una tabla suelta.
+  // El diseño impreso es deliberadamente plano (sin tarjetas con bordes
+  // redondeados/sombra): una caja que no cabe entera en una hoja se corta
+  // de forma fea en la impresión. Cada grupo es solo un título, dos cifras
+  // y una tabla angosta de 4 columnas, separado del siguiente por una línea.
   // =========================================================
 
   var informeTipoGastoSelect = document.getElementById("informe-tipo-gasto");
@@ -82,6 +85,20 @@
     return "Deudas (ambas direcciones)";
   }
 
+  // Etiquetas de las dos cifras de cada grupo/resumen, según de qué lado de
+  // la deuda se trata (no es lo mismo "debes" que "te deben").
+  function statLabels(tipoGrupo) {
+    if (tipoGrupo === "me_deben") return { esteMes: "Te deben este mes", total: "Total que te deben" };
+    if (tipoGrupo === "propio") return { esteMes: "Gastado este mes", total: "Gastado en el periodo" };
+    return { esteMes: "Debes este mes", total: "Deuda total pendiente" };
+  }
+
+  function resumenDireccionLabel(tipoGrupo) {
+    if (tipoGrupo === "me_deben") return "Total que te deben";
+    if (tipoGrupo === "propio") return "Total de tus gastos";
+    return "Total que debes";
+  }
+
   function tituloTipoGasto(tipo) {
     if (tipo === "fijo") return "Gastos fijos";
     if (tipo === "suscripcion") return "Suscripciones/Streaming";
@@ -89,22 +106,35 @@
     return "Todos los tipos de gasto";
   }
 
-  // Cuánto de esta compra sigue pendiente, calculado directo desde la
-  // compra (no desde el balance de la persona): así el número siempre
-  // calza exactamente con las filas que se están mostrando en el informe.
-  function pendienteDeCompraInforme(compra) {
+  // Todo lo que falta por pagar de esta compra, cuotas futuras incluidas.
+  function pendienteTotalDeCompra(compra) {
     if (compra.tipo === "cuotas") return Math.max(0, (Number(compra.monto) || 0) - cuotaPaidTotal(compra));
     return compra.pagada ? 0 : (Number(compra.monto) || 0);
   }
 
-  function cuotasTextoInforme(compra) {
+  // Solo lo que corresponde juntar ahora: si es en cuotas, el valor de la
+  // próxima cuota sin pagar (no el total de las que quedan); si no, el
+  // mismo monto completo de "pendienteTotalDeCompra".
+  function pendienteEsteMesDeCompra(compra) {
+    if (compra.tipo !== "cuotas") return compra.pagada ? 0 : (Number(compra.monto) || 0);
+    if (compra.pagada) return 0;
+    var schedule = buildCuotaSchedule(compra);
+    var actual = schedule.find(function (c) { return !c.paid; });
+    return actual ? actual.amount : 0;
+  }
+
+  function cuotaInfoTexto(compra) {
     if (compra.tipo !== "cuotas") return "";
     var schedule = buildCuotaSchedule(compra);
     var pagadas = schedule.filter(function (c) { return c.paid; }).length;
     if (compra.pagada || pagadas >= compra.cuotas) {
       return "Cuotas completas (" + compra.cuotas + "/" + compra.cuotas + ")";
     }
-    return "Cuota " + (pagadas + 1) + " de " + compra.cuotas + " — falta " + formatCurrency(pendienteDeCompraInforme(compra));
+    var esteMes = pendienteEsteMesDeCompra(compra);
+    var total = pendienteTotalDeCompra(compra);
+    var texto = "Cuota " + (pagadas + 1) + " de " + compra.cuotas + ": " + formatCurrency(esteMes);
+    if (total > esteMes) texto += " (quedan " + formatCurrency(total) + " en total)";
+    return texto;
   }
 
   function estadoTextoInforme(compra) {
@@ -156,7 +186,7 @@
       titulo.textContent = compraDisplayName(c);
       tdDetalle.appendChild(titulo);
 
-      var subPartes = [categoriaLabel(c), cuotasTextoInforme(c), cuandoCorrespondeTexto(c)].filter(Boolean);
+      var subPartes = [categoriaLabel(c), cuotaInfoTexto(c), cuandoCorrespondeTexto(c)].filter(Boolean);
       var sub = document.createElement("div");
       sub.className = "informe-detalle-sub";
       sub.textContent = subPartes.join(" · ");
@@ -182,55 +212,55 @@
     return wrap;
   }
 
-  // Cada grupo reusa el mismo formato de tarjeta que "Deudas" (título +
-  // subtítulo + dos cifras grandes), para que el informe se vea pulido y no
-  // como una tabla suelta.
-  function buildInformeGrupo(titulo, subtitulo, compras) {
-    var totalGastado = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-    var totalPendiente = compras.reduce(function (sum, c) { return sum + pendienteDeCompraInforme(c); }, 0);
+  // Cada grupo es plano a propósito (sin tarjeta con borde/sombra): título,
+  // subtítulo, las dos cifras (este mes / total) y la tabla, separado del
+  // siguiente grupo solo por una línea horizontal. Una caja con esquinas
+  // redondeadas que no cabe entera en una hoja se ve muy mal cortada al
+  // imprimir — un simple borde inferior no tiene ese problema.
+  function buildInformeGrupo(titulo, subtitulo, compras, tipoGrupo) {
+    var esteMes = compras.reduce(function (sum, c) { return sum + pendienteEsteMesDeCompra(c); }, 0);
+    var total = compras.reduce(function (sum, c) { return sum + pendienteTotalDeCompra(c); }, 0);
+    var labels = statLabels(tipoGrupo);
 
-    var card = document.createElement("section");
-    card.className = "informe-grupo deuda-card";
+    var section = document.createElement("section");
+    section.className = "informe-grupo";
 
     var head = document.createElement("div");
-    head.className = "deuda-card-head";
+    head.className = "informe-grupo-head";
 
     var titleWrap = document.createElement("div");
-    titleWrap.className = "deuda-card-title-wrap";
     var titleEl = document.createElement("div");
-    titleEl.className = "deuda-card-title";
+    titleEl.className = "informe-grupo-titulo";
     titleEl.textContent = titulo;
     titleWrap.appendChild(titleEl);
     var subEl = document.createElement("div");
-    subEl.className = "deuda-card-subtitle";
+    subEl.className = "informe-grupo-subtitulo";
     subEl.textContent = subtitulo;
     titleWrap.appendChild(subEl);
     head.appendChild(titleWrap);
 
     var stats = document.createElement("div");
-    stats.className = "deuda-card-stats";
-    [
-      ["Total del periodo", totalGastado, "al-dia"],
-      ["Pendiente de pago", totalPendiente, totalPendiente > 0 ? "pendiente" : "al-dia"]
-    ].forEach(function (fila) {
-      var stat = document.createElement("div");
-      stat.className = "deuda-stat";
-      var label = document.createElement("span");
-      label.className = "deuda-stat-label";
-      label.textContent = fila[0];
-      var value = document.createElement("span");
-      value.className = "deuda-stat-value " + fila[2];
-      value.textContent = formatCurrency(fila[1]);
-      stat.appendChild(label);
-      stat.appendChild(value);
-      stats.appendChild(stat);
-    });
+    stats.className = "informe-grupo-stats";
+    [[labels.esteMes, esteMes, esteMes > 0 ? "pendiente" : "al-dia"], [labels.total, total, total > 0 ? "pendiente" : "al-dia"]]
+      .forEach(function (fila) {
+        var stat = document.createElement("div");
+        stat.className = "informe-stat";
+        var label = document.createElement("span");
+        label.className = "informe-stat-label";
+        label.textContent = fila[0];
+        var value = document.createElement("span");
+        value.className = "informe-stat-value " + fila[2];
+        value.textContent = formatCurrency(fila[1]);
+        stat.appendChild(label);
+        stat.appendChild(value);
+        stats.appendChild(stat);
+      });
     head.appendChild(stats);
-    card.appendChild(head);
+    section.appendChild(head);
 
-    card.appendChild(buildInformeTabla(compras));
+    section.appendChild(buildInformeTabla(compras));
 
-    return { section: card, totalGastado: totalGastado, totalPendiente: totalPendiente };
+    return { section: section, tipoGrupo: tipoGrupo, esteMes: esteMes, total: total };
   }
 
   function comprasBaseInforme() {
@@ -283,26 +313,38 @@
     header.appendChild(fechaGen);
     informeResultadoEl.appendChild(header);
 
-    var totalGastado = 0, totalPendiente = 0;
+    // Sumas por dirección (nunca se mezcla "lo que debes" con "lo que te
+    // deben" en una sola cifra: son cosas opuestas y sumarlas no significa
+    // nada). Cada dirección presente en el informe se resume aparte.
+    var porDireccion = {};
     grupos.forEach(function (g) {
       informeResultadoEl.appendChild(g.section);
-      totalGastado += g.totalGastado;
-      totalPendiente += g.totalPendiente;
+      if (!porDireccion[g.tipoGrupo]) porDireccion[g.tipoGrupo] = { esteMes: 0, total: 0, count: 0 };
+      porDireccion[g.tipoGrupo].esteMes += g.esteMes;
+      porDireccion[g.tipoGrupo].total += g.total;
+      porDireccion[g.tipoGrupo].count += 1;
     });
 
-    // El total general solo aporta algo cuando hay más de un grupo (con uno
-    // solo sería el mismo número repetido dos veces).
+    // El resumen final solo aporta algo cuando hay más de un grupo (con uno
+    // solo sería repetir las mismas dos cifras que ya se ven arriba).
     if (grupos.length > 1) {
       var resumen = document.createElement("div");
       resumen.className = "informe-total-general";
-      var bloqueGastado = document.createElement("div");
-      bloqueGastado.className = "informe-total-bloque";
-      bloqueGastado.innerHTML = "<span class=\"informe-total-label\">Total general</span><span class=\"informe-total-valor\">" + formatCurrency(totalGastado) + "</span>";
-      var bloquePendiente = document.createElement("div");
-      bloquePendiente.className = "informe-total-bloque";
-      bloquePendiente.innerHTML = "<span class=\"informe-total-label\">Pendiente de pago</span><span class=\"informe-total-valor pendiente\">" + formatCurrency(totalPendiente) + "</span>";
-      resumen.appendChild(bloqueGastado);
-      resumen.appendChild(bloquePendiente);
+      Object.keys(porDireccion).forEach(function (tipoGrupo) {
+        var d = porDireccion[tipoGrupo];
+        var fila = document.createElement("div");
+        fila.className = "informe-total-fila";
+        var nombre = document.createElement("span");
+        nombre.className = "informe-total-fila-label";
+        nombre.textContent = resumenDireccionLabel(tipoGrupo) + (d.count > 1 ? " (" + d.count + " personas)" : "");
+        fila.appendChild(nombre);
+        var valores = document.createElement("span");
+        valores.className = "informe-total-fila-valores";
+        valores.innerHTML = "Este mes: <strong>" + formatCurrency(d.esteMes) + "</strong>" +
+          " &nbsp;·&nbsp; Total: <strong>" + formatCurrency(d.total) + "</strong>";
+        fila.appendChild(valores);
+        resumen.appendChild(fila);
+      });
       informeResultadoEl.appendChild(resumen);
     }
 
@@ -325,7 +367,7 @@
         grupos.push(buildInformeGrupo(
           "💳 Le debes a " + personaNombre(id),
           "Compras pagadas con dinero de " + personaNombre(id) + " y lo que todavía falta por devolverle.",
-          compras
+          compras, "debo"
         ));
       });
     }
@@ -339,7 +381,7 @@
         grupos.push(buildInformeGrupo(
           "🤝 " + deudorNombre(key) + " te debe",
           "Compras que pagaste tú y que " + deudorNombre(key) + " tiene pendientes de devolverte.",
-          compras
+          compras, "me_deben"
         ));
       });
     }
@@ -350,7 +392,7 @@
         grupos.push(buildInformeGrupo(
           "🧍 Tus gastos propios",
           "Gastos personales sin deuda asociada — es solo un registro informativo, no algo por cobrar o devolver.",
-          propias
+          propias, "propio"
         ));
       }
     }

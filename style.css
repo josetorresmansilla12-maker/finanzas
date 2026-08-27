@@ -2044,8 +2044,74 @@ tr.compartida-detalle-row .compra-mini-row {
   font-size: 0.85rem;
 }
 
+/* Un grupo es deliberadamente plano (sin tarjeta con borde redondeado ni
+   sombra): un bloque así, cuando no cabe entero en una hoja impresa, se
+   corta de forma muy fea. Una línea simple bajo el bloque no tiene ese
+   problema aunque el contenido siga en la página siguiente. */
 .informe-grupo {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.informe-grupo:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.informe-grupo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 14px;
+}
+
+.informe-grupo-titulo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.informe-grupo-subtitulo {
+  margin-top: 2px;
+  max-width: 46ch;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.informe-grupo-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.informe-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.informe-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.informe-stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.informe-stat-value.pendiente {
+  color: var(--color-danger-dark);
+}
+
+.informe-stat-value.al-dia {
+  color: var(--color-primary);
 }
 
 .informe-tabla th,
@@ -2064,38 +2130,34 @@ tr.compartida-detalle-row .compra-mini-row {
 }
 
 .informe-total-general {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-  padding: 18px 20px;
-  background: var(--color-primary-dark);
+  margin-top: 4px;
+  padding: 14px 18px;
+  background: var(--color-tint);
   border-radius: var(--radius);
+  border: 1px solid var(--color-border);
 }
 
-.informe-total-bloque {
+.informe-total-fila {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 160px;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 6px 0;
 }
 
-.informe-total-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.75);
+.informe-total-fila + .informe-total-fila {
+  border-top: 1px solid var(--color-border);
 }
 
-.informe-total-valor {
-  font-size: 1.7rem;
+.informe-total-fila-label {
   font-weight: 700;
-  color: #fff;
+  color: var(--color-primary-dark);
 }
 
-.informe-total-valor.pendiente {
-  color: #ffd9a8;
+.informe-total-fila-valores {
+  color: var(--color-text);
+  font-size: 0.95rem;
 }
 
 /* Al imprimir (o "Guardar como PDF"): se oculta todo menos el informe
@@ -2123,16 +2185,18 @@ tr.compartida-detalle-row .compra-mini-row {
   }
 
   body,
-  .informe-report-header,
   .due-badge,
   .informe-total-general {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .informe-grupo,
-  .informe-grupo tr {
+  .informe-tabla tr {
     break-inside: avoid;
+  }
+
+  .informe-grupo-head {
+    break-after: avoid;
   }
 
   .table-wrapper {
@@ -2142,10 +2206,5 @@ tr.compartida-detalle-row .compra-mini-row {
   .informe-tabla {
     width: 100%;
     font-size: 0.85rem;
-  }
-
-  .deuda-card {
-    box-shadow: none;
-    border: 1px solid #ccc;
   }
 }
