@@ -862,6 +862,28 @@
         <h2>📄 Generar informe</h2>
         <p class="lede-hint">Pensado para entregar a otra persona: un documento claro de qué se le debe, en qué se gastó su dinero y cuándo corresponde el pago. No es una planilla de números — es para leer.</p>
 
+        <div class="field owner-field">
+          <label>¿Qué quieres ver?</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="informe-direccion" value="todo" checked />
+              Todo
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="informe-direccion" value="me_deben" />
+              Lo que me deben a mí
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="informe-direccion" value="debo" />
+              Lo que debo yo
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="informe-direccion" value="propios" />
+              Mis gastos propios
+            </label>
+          </div>
+        </div>
+
         <div class="field">
           <label for="informe-tipo-gasto">Tipo de gasto</label>
           <select id="informe-tipo-gasto">
@@ -873,13 +895,13 @@
         </div>
 
         <div class="field owner-field">
-          <label>Personas a incluir <span class="label-hint">(opcional — sin marcar ninguna se incluyen todas las deudas)</span></label>
+          <label>Personas a incluir <span class="label-hint">(opcional — sin marcar ninguna se incluyen todas)</span></label>
           <div id="informe-personas-list" class="radio-group"></div>
-          <span class="label-hint">Marca "Yo" para incluir además tus gastos propios, sin deuda asociada.</span>
+          <span class="label-hint">Se cruza con la opción de arriba: por ejemplo, marca "Lo que debo yo" + "Mamá" y "Colun" para ver, separado, cuánto le debes a cada una y el total de ambas al final.</span>
         </div>
 
         <div class="field owner-field">
-          <label>Rango de fechas <span class="label-hint">(opcional)</span></label>
+          <label>Rango de fechas <span class="label-hint">(por defecto, el mes actual — puedes cambiarlo o borrarlo para incluir todo)</span></label>
           <div class="ventas-filter-dates">
             <label for="informe-fecha-desde">Desde</label>
             <input type="date" id="informe-fecha-desde" />

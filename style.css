@@ -2020,47 +2020,94 @@ tr.compartida-detalle-row .compra-mini-row {
 
 /* ---------- Informes ---------- */
 
+.informe-report-header {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--color-primary);
+}
+
 .informe-report-header h2 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  color: var(--color-primary-dark);
+}
+
+.informe-report-meta {
+  margin: 0 0 2px;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.informe-report-fecha {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
 }
 
 .informe-grupo {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-border);
+  margin-bottom: 22px;
 }
 
-.informe-grupo:first-of-type {
-  margin-top: 20px;
+.informe-tabla th,
+.informe-tabla td {
+  vertical-align: top;
 }
 
-.informe-grupo h3 {
-  margin: 0 0 4px;
+.informe-detalle-titulo {
+  font-weight: 600;
 }
 
-.informe-grupo-total {
-  margin: 10px 2px 0;
-  font-weight: 700;
-  color: var(--color-primary-dark);
+.informe-detalle-sub {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
 .informe-total-general {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
-  margin-top: 28px;
-  padding: 16px 18px;
-  background: var(--color-tint);
+  margin-top: 8px;
+  padding: 18px 20px;
+  background: var(--color-primary-dark);
   border-radius: var(--radius);
-  font-size: 1.1rem;
+}
+
+.informe-total-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.informe-total-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.informe-total-valor {
+  font-size: 1.7rem;
   font-weight: 700;
-  color: var(--color-primary-dark);
+  color: #fff;
+}
+
+.informe-total-valor.pendiente {
+  color: #ffd9a8;
 }
 
 /* Al imprimir (o "Guardar como PDF"): se oculta todo menos el informe
    generado, para que quede un documento limpio y legible sin la interfaz
-   de la app alrededor. */
+   de la app alrededor. La tabla de 4 columnas (en vez de 7) es a propósito:
+   cabe en el ancho de una hoja sin recortarse ni necesitar scroll, que en
+   papel no existe. */
 @media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -2074,10 +2121,31 @@ tr.compartida-detalle-row .compra-mini-row {
     left: 0;
     width: 100%;
   }
-  .informe-grupo {
+
+  body,
+  .informe-report-header,
+  .due-badge,
+  .informe-total-general {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .informe-grupo,
+  .informe-grupo tr {
     break-inside: avoid;
   }
-  table {
+
+  .table-wrapper {
+    overflow: visible;
+  }
+
+  .informe-tabla {
+    width: 100%;
     font-size: 0.85rem;
+  }
+
+  .deuda-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
   }
 }
