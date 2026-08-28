@@ -23,6 +23,7 @@
   var informePersonasListEl = document.getElementById("informe-personas-list");
   var informeFechaDesdeInput = document.getElementById("informe-fecha-desde");
   var informeFechaHastaInput = document.getElementById("informe-fecha-hasta");
+  var informeVerDestinatarioInput = document.getElementById("informe-ver-destinatario");
   var informeGenerarBtn = document.getElementById("informe-generar-btn");
   var informeLimpiarBtn = document.getElementById("informe-limpiar-btn");
   var informeResultadoEl = document.getElementById("informe-resultado");
@@ -153,6 +154,50 @@
     return "overdue";
   }
 
+  // A quién le corresponde realmente el pago: si la compra se pagó con una
+  // tarjeta que no es propia (ej. la de mamá), el dinero no vuelve a ti
+  // sino a esa persona, aunque la deuda esté registrada como "me deben".
+  function destinatarioLabel(compra) {
+    if (compra.tarjetaId) {
+      var t = tarjetaById(compra.tarjetaId);
+      if (t && t.owner && t.owner !== "mia") return personaNombre(t.owner);
+    }
+    return "A ti";
+  }
+
+  function buildDestinatarioDesglose(compras) {
+    var grupos = {};
+    var orden = [];
+    compras.forEach(function (c) {
+      var label = destinatarioLabel(c);
+      if (!grupos[label]) { grupos[label] = 0; orden.push(label); }
+      grupos[label] += pendienteTotalDeCompra(c);
+    });
+
+    // Si todo va a la misma persona, el desglose no aporta nada nuevo.
+    if (orden.length <= 1) return null;
+
+    var wrap = document.createElement("div");
+    wrap.className = "informe-destinatario-lista";
+    var titulo = document.createElement("div");
+    titulo.className = "informe-destinatario-titulo";
+    titulo.textContent = "A quién corresponde pagarle (del total pendiente):";
+    wrap.appendChild(titulo);
+
+    orden.sort(function (a, b) { return grupos[b] - grupos[a]; }).forEach(function (label) {
+      var fila = document.createElement("div");
+      fila.className = "informe-destinatario-fila";
+      var nombre = document.createElement("span");
+      nombre.textContent = label;
+      var valor = document.createElement("span");
+      valor.textContent = formatCurrency(grupos[label]);
+      fila.appendChild(nombre);
+      fila.appendChild(valor);
+      wrap.appendChild(fila);
+    });
+    return wrap;
+  }
+
   function cuandoCorrespondeTexto(compra) {
     if (compra.fechaPagoAcordada) return "Acordado: " + formatDateDisplay(compra.fechaPagoAcordada);
     if (compra.fechaPago) return "Vence: " + formatDateDisplay(compra.fechaPago);
@@ -217,7 +262,7 @@
   // siguiente grupo solo por una línea horizontal. Una caja con esquinas
   // redondeadas que no cabe entera en una hoja se ve muy mal cortada al
   // imprimir — un simple borde inferior no tiene ese problema.
-  function buildInformeGrupo(titulo, subtitulo, compras, tipoGrupo) {
+  function buildInformeGrupo(titulo, subtitulo, compras, tipoGrupo, mostrarDestinatario) {
     var esteMes = compras.reduce(function (sum, c) { return sum + pendienteEsteMesDeCompra(c); }, 0);
     var total = compras.reduce(function (sum, c) { return sum + pendienteTotalDeCompra(c); }, 0);
     var labels = statLabels(tipoGrupo);
@@ -257,6 +302,11 @@
       });
     head.appendChild(stats);
     section.appendChild(head);
+
+    if (mostrarDestinatario && tipoGrupo === "me_deben") {
+      var desglose = buildDestinatarioDesglose(compras);
+      if (desglose) section.appendChild(desglose);
+    }
 
     section.appendChild(buildInformeTabla(compras));
 
@@ -381,7 +431,7 @@
         grupos.push(buildInformeGrupo(
           deudorNombre(key) + " te debe",
           "Compras que pagaste tú y que " + deudorNombre(key) + " tiene pendientes de devolverte.",
-          compras, "me_deben"
+          compras, "me_deben", informeVerDestinatarioInput.checked
         ));
       });
     }
@@ -413,6 +463,7 @@
     var rango = primerYUltimoDiaMes();
     informeFechaDesdeInput.value = rango.desde;
     informeFechaHastaInput.value = rango.hasta;
+    informeVerDestinatarioInput.checked = false;
     var radioTodo = document.querySelector('input[name="informe-direccion"][value="todo"]');
     if (radioTodo) radioTodo.checked = true;
     informePersonasListEl.parentElement.classList.remove("hidden");
