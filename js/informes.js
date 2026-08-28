@@ -365,7 +365,7 @@
       acreedores.forEach(function (id) {
         var compras = base.filter(function (c) { return esDeudaMia(c) && c.acreedor === id; });
         grupos.push(buildInformeGrupo(
-          "💳 Le debes a " + personaNombre(id),
+          "Le debes a " + personaNombre(id),
           "Compras pagadas con dinero de " + personaNombre(id) + " y lo que todavía falta por devolverle.",
           compras, "debo"
         ));
@@ -379,7 +379,7 @@
       deudores.forEach(function (key) {
         var compras = base.filter(function (c) { return esMeDeben(c) && deudorKey(c) === key; });
         grupos.push(buildInformeGrupo(
-          "🤝 " + deudorNombre(key) + " te debe",
+          deudorNombre(key) + " te debe",
           "Compras que pagaste tú y que " + deudorNombre(key) + " tiene pendientes de devolverte.",
           compras, "me_deben"
         ));
@@ -390,7 +390,7 @@
       var propias = base.filter(function (c) { return !esMeDeben(c) && !esDeudaMia(c) && (c.comprador || YO.id) === YO.id; });
       if (propias.length > 0) {
         grupos.push(buildInformeGrupo(
-          "🧍 Tus gastos propios",
+          "Tus gastos propios",
           "Gastos personales sin deuda asociada — es solo un registro informativo, no algo por cobrar o devolver.",
           propias, "propio"
         ));

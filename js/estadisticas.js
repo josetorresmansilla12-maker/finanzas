@@ -752,6 +752,7 @@
     renderEstadisticas();
     renderSueldo();
     renderInformesFiltros();
+    renderCalculadoraFiltros();
     renderAppAlerts();
     updateTrashCount();
   }

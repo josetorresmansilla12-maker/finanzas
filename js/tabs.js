@@ -9,6 +9,7 @@
   var tabSueldoBtn = document.getElementById("tab-sueldo-btn");
   var tabTarjetasBtn = document.getElementById("tab-tarjetas-btn");
   var tabInformesBtn = document.getElementById("tab-informes-btn");
+  var tabCalculadoraBtn = document.getElementById("tab-calculadora-btn");
 
   var tabComprasPanel = document.getElementById("tab-compras");
   var tabDeudasPanel = document.getElementById("tab-deudas");
@@ -17,6 +18,7 @@
   var tabSueldoPanel = document.getElementById("tab-sueldo");
   var tabTarjetasPanel = document.getElementById("tab-tarjetas");
   var tabInformesPanel = document.getElementById("tab-informes");
+  var tabCalculadoraPanel = document.getElementById("tab-calculadora");
 
   function showTabPanels(tab) {
     tabComprasPanel.classList.toggle("hidden", tab !== "compras");
@@ -26,6 +28,7 @@
     tabSueldoPanel.classList.toggle("hidden", tab !== "sueldo");
     tabTarjetasPanel.classList.toggle("hidden", tab !== "tarjetas");
     tabInformesPanel.classList.toggle("hidden", tab !== "informes");
+    tabCalculadoraPanel.classList.toggle("hidden", tab !== "calculadora");
   }
 
   function activateTab(tab) {
@@ -36,6 +39,7 @@
     tabSueldoBtn.classList.toggle("active", tab === "sueldo");
     tabTarjetasBtn.classList.toggle("active", tab === "tarjetas");
     tabInformesBtn.classList.toggle("active", tab === "informes");
+    tabCalculadoraBtn.classList.toggle("active", tab === "calculadora");
     showTabPanels(tab);
 
     if (tab === "deudas") renderDeudas();
@@ -43,6 +47,7 @@
     if (tab === "estadisticas") renderEstadisticas();
     if (tab === "sueldo") renderSueldo();
     if (tab === "informes") renderInformesFiltros();
+    if (tab === "calculadora") renderCalculadoraFiltros();
   }
 
   tabComprasBtn.addEventListener("click", function () { activateTab("compras"); });
@@ -52,3 +57,4 @@
   tabSueldoBtn.addEventListener("click", function () { activateTab("sueldo"); });
   tabTarjetasBtn.addEventListener("click", function () { activateTab("tarjetas"); });
   tabInformesBtn.addEventListener("click", function () { activateTab("informes"); });
+  tabCalculadoraBtn.addEventListener("click", function () { activateTab("calculadora"); });

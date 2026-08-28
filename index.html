@@ -34,6 +34,7 @@
     <button type="button" class="tab-btn" id="tab-sueldo-btn" data-tab="sueldo">Mi Sueldo</button>
     <button type="button" class="tab-btn" id="tab-tarjetas-btn" data-tab="tarjetas">Tarjetas</button>
     <button type="button" class="tab-btn" id="tab-informes-btn" data-tab="informes">Informes</button>
+    <button type="button" class="tab-btn" id="tab-calculadora-btn" data-tab="calculadora">Calculadora</button>
   </nav>
 
   <main class="container">
@@ -927,6 +928,62 @@
         <div id="informe-resultado"></div>
       </section>
     </section>
+
+    <!-- ===================== TAB: CALCULADORA ===================== -->
+    <section id="tab-calculadora" class="tab-panel hidden">
+      <section class="form-section calculadora-filtros-section">
+        <h2>🧮 Calculadora de cobro</h2>
+        <p class="lede-hint">Elige una persona, marca a mano las compras que quieres cobrarle (sin importar cómo quedaron registradas) y arma un comprobante con el total, listo para imprimir o guardar como PDF.</p>
+
+        <div class="field">
+          <label for="calc-persona">¿A quién le vas a cobrar?</label>
+          <select id="calc-persona"></select>
+        </div>
+
+        <div class="field owner-field">
+          <label>Filtrar la lista de compras <span class="label-hint">(solo para encontrarlas más rápido — no afecta lo ya marcado)</span></label>
+          <div class="ventas-filters">
+            <input type="search" id="calc-filter-texto" class="compras-buscador" placeholder="🔎 Buscar por descripción, categoría o nota…" />
+            <div class="ventas-filter-dates">
+              <label for="calc-fecha-desde">Desde</label>
+              <input type="date" id="calc-fecha-desde" />
+              <label for="calc-fecha-hasta">Hasta</label>
+              <input type="date" id="calc-fecha-hasta" />
+            </div>
+            <label class="radio-option calc-solo-marcadas-option">
+              <input type="checkbox" id="calc-solo-marcadas" />
+              Ver solo las marcadas
+            </label>
+          </div>
+        </div>
+
+        <div class="calculadora-lista-header">
+          <span id="calc-seleccion-resumen">0 compras marcadas · $0</span>
+          <div class="calculadora-lista-acciones">
+            <button type="button" id="calc-marcar-todo-btn" class="btn btn-outline btn-small">Marcar todo lo filtrado</button>
+            <button type="button" id="calc-desmarcar-todo-btn" class="btn btn-outline btn-small">Desmarcar todo</button>
+          </div>
+        </div>
+        <div id="calc-lista" class="calculadora-lista"></div>
+        <p id="calc-lista-empty" class="empty-state hidden">No hay compras que calcen con este filtro.</p>
+
+        <div class="form-actions">
+          <button type="button" id="calc-generar-btn" class="btn btn-primary">Generar comprobante</button>
+          <button type="button" id="calc-limpiar-btn" class="btn btn-secondary">Limpiar selección</button>
+        </div>
+      </section>
+
+      <section class="table-section calculadora-resultado-section">
+        <div class="table-header">
+          <h2>Vista previa</h2>
+          <div class="table-actions">
+            <button type="button" id="calc-imprimir-btn" class="btn btn-outline hidden">🖨️ Imprimir / Guardar como PDF</button>
+          </div>
+        </div>
+        <p id="calc-empty-state" class="empty-state">Marca las compras que quieres cobrar y toca "Generar comprobante".</p>
+        <div id="calc-resultado"></div>
+      </section>
+    </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
@@ -1019,6 +1076,7 @@
   <script src="js/sueldo.js"></script>
   <script src="js/estadisticas.js"></script>
   <script src="js/informes.js"></script>
+  <script src="js/calculadora.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/sync.js"></script>

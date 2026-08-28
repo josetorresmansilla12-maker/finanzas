@@ -2160,28 +2160,93 @@ tr.compartida-detalle-row .compra-mini-row {
   font-size: 0.95rem;
 }
 
-/* Al imprimir (o "Guardar como PDF"): se oculta todo menos el informe
-   generado, para que quede un documento limpio y legible sin la interfaz
-   de la app alrededor. La tabla de 4 columnas (en vez de 7) es a propósito:
-   cabe en el ancho de una hoja sin recortarse ni necesitar scroll, que en
-   papel no existe. */
+/* ---------- Calculadora ---------- */
+
+.calculadora-lista-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.calculadora-lista-header span {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.calculadora-lista-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calculadora-lista {
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.calc-item-row {
+  cursor: pointer;
+}
+
+.calc-item-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+.calc-solo-marcadas-option {
+  padding: 8px 14px;
+}
+
+/* Al imprimir (o "Guardar como PDF"): se oculta todo menos el documento
+   generado (Informes o Calculadora), para que quede limpio y legible sin
+   la interfaz de la app alrededor.
+   Importante: esto usa display:none, NO el truco clásico de
+   "visibility:hidden + position:absolute". Ese truco deja todo el resto de
+   la página (header, nav, filtros) ocupando su alto normal pero invisible,
+   así que la altura total del documento queda enorme y el motor de
+   impresión pagina mal — hojas en blanco, contenido cortado a la mitad,
+   etc. Con display:none esos elementos no ocupan espacio y el informe
+   fluye de forma normal en el documento, paginándose como corresponde. */
 @media print {
   @page {
     margin: 16mm 14mm;
   }
 
-  body * {
-    visibility: hidden;
+  .app-header,
+  .app-alerts,
+  .tabs,
+  .informe-filtros-section,
+  .informe-resultado-section > .table-header,
+  .calculadora-filtros-section,
+  .calculadora-resultado-section > .table-header {
+    display: none !important;
   }
-  #informe-resultado,
-  #informe-resultado * {
-    visibility: visible;
+
+  .container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
   }
-  #informe-resultado {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+
+  .informe-resultado-section,
+  .calculadora-resultado-section {
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+  }
+
+  .informe-report-header {
+    border-bottom-color: #333;
   }
 
   body,
