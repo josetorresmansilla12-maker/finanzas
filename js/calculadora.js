@@ -4,12 +4,16 @@
   // CALCULADORA — armar un cobro a mano, sin sumar con la calculadora del
   // celular.
   //
-  // A diferencia de Informes (que agrupa automáticamente según cómo quedó
-  // registrada cada compra), acá la selección es 100% manual: se elige una
-  // persona solo para el título del comprobante, y se marcan las compras
-  // que se quieran cobrar sin importar su comprador/acreedor original — útil
-  // para juntar en una sola cuenta cosas que nunca se etiquetaron como
-  // deuda de esa persona.
+  // Se elige primero una persona, y la lista muestra solo SUS compras: las
+  // que ella hizo (comprador) más las que ya están marcadas como que te
+  // debe (aunque las hayas comprado tú, ej. "compré esto para Colun, ella
+  // me debe"). Desde esa lista se marcan a mano las que se le van a cobrar
+  // ahora — a diferencia de Informes (que agrupa todo automáticamente),
+  // acá el criterio de "cuáles cobrar" lo decide la persona que usa la app.
+  //
+  // Las compras en cuotas no se cobran completas por defecto: se ofrece
+  // cobrar UNA cuota (la próxima que falta), con la opción de subir la
+  // cantidad si se le quiere cobrar más de una cuota atrasada de una vez.
   // =========================================================
 
   var calcPersonaSelect = document.getElementById("calc-persona");
@@ -33,11 +37,9 @@
   // más, sin que lo anterior se borre).
   var calcSeleccionadas = new Set();
 
-  (function initFechasPorDefecto() {
-    var rango = primerYUltimoDiaMes();
-    calcFechaDesdeInput.value = rango.desde;
-    calcFechaHastaInput.value = rango.hasta;
-  })();
+  // Cuántas cuotas cobrar de cada compra en cuotas (compraId -> cantidad).
+  // Por defecto es 1 aunque no tenga entrada acá (ver montoACobrar).
+  var calcCuotasCantidad = new Map();
 
   function renderCalculadoraFiltros() {
     if (!calcPersonaSelect) return;
@@ -54,13 +56,24 @@
     }
   }
 
+  // Todo lo que se puede considerar "de" esta persona: lo que ella compró,
+  // más lo que ya está marcado como que te debe aunque lo hayas comprado tú.
+  function comprasDePersona(personaId) {
+    return loadCompras().filter(function (c) {
+      if (esCargoFuturo(c)) return false;
+      var esComprador = (c.comprador || YO.id) === personaId;
+      var esDeudora = esMeDeben(c) && deudorKey(c) === personaId;
+      return esComprador || esDeudora;
+    });
+  }
+
   function comprasFiltradasCalc() {
+    var personaId = calcPersonaSelect.value;
     var termino = sinTildes(calcFilterTexto.value.trim());
     var desde = calcFechaDesdeInput.value;
     var hasta = calcFechaHastaInput.value;
     var soloMarcadas = calcSoloMarcadasInput.checked;
-    return loadCompras().filter(function (c) {
-      if (esCargoFuturo(c)) return false;
+    return comprasDePersona(personaId).filter(function (c) {
       if (soloMarcadas && !calcSeleccionadas.has(c.id)) return false;
       if (!coincideBusqueda(c, termino)) return false;
       if (desde && c.fecha < desde) return false;
@@ -69,16 +82,34 @@
     }).sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
   }
 
+  // Las cuotas que todavía faltan por pagar, en orden (la primera es "la
+  // próxima"). Vacío si no es en cuotas o si ya está completa/pagada.
+  function cuotasPendientesDe(compra) {
+    if (compra.tipo !== "cuotas" || compra.pagada) return [];
+    return buildCuotaSchedule(compra).filter(function (c) { return !c.paid; });
+  }
+
+  // Cuánto se le va a cobrar realmente a esta compra: si es en cuotas, la
+  // suma de las N próximas cuotas sin pagar (N = lo elegido, 1 por
+  // defecto); si no, lo que falte por pagar en total.
+  function montoACobrar(compra) {
+    var pendientes = cuotasPendientesDe(compra);
+    if (pendientes.length > 0) {
+      var cantidad = Math.max(1, Math.min(calcCuotasCantidad.get(compra.id) || 1, pendientes.length));
+      return pendientes.slice(0, cantidad).reduce(function (sum, c) { return sum + c.amount; }, 0);
+    }
+    return pendienteTotalDeCompra(compra);
+  }
+
   function actualizarSeleccionResumen() {
-    var compras = loadCompras();
-    var seleccionadas = compras.filter(function (c) { return calcSeleccionadas.has(c.id); });
-    var total = seleccionadas.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-    calcSeleccionResumenEl.textContent = seleccionadas.length +
-      (seleccionadas.length === 1 ? " compra marcada · " : " compras marcadas · ") + formatCurrency(total);
+    var compras = loadCompras().filter(function (c) { return calcSeleccionadas.has(c.id); });
+    var total = compras.reduce(function (sum, c) { return sum + montoACobrar(c); }, 0);
+    calcSeleccionResumenEl.textContent = compras.length +
+      (compras.length === 1 ? " compra marcada · " : " compras marcadas · ") + formatCurrency(total);
   }
 
   function buildCalcItemRow(compra) {
-    var row = document.createElement("label");
+    var row = document.createElement("div");
     row.className = "compra-mini-row calc-item-row";
 
     var checkbox = document.createElement("input");
@@ -97,17 +128,58 @@
     var descEl = document.createElement("span");
     descEl.className = "compra-mini-desc";
     descEl.textContent = compraDisplayName(compra);
+    info.appendChild(descEl);
+
     var metaEl = document.createElement("span");
     metaEl.className = "compra-mini-meta";
-    metaEl.textContent = formatDateDisplay(compra.fecha) + " · " + categoriaLabel(compra) +
-      (compra.pagada ? " · Ya pagada" : "");
-    info.appendChild(descEl);
+    var metaTexto = formatDateDisplay(compra.fecha) + " · " + categoriaLabel(compra);
+    if (compra.pagada) metaTexto += " · Ya pagada";
+    metaEl.textContent = metaTexto;
     info.appendChild(metaEl);
-    row.appendChild(info);
 
     var valueEl = document.createElement("span");
     valueEl.className = "compra-mini-value";
-    valueEl.textContent = formatCurrency(compra.monto);
+
+    var pendientes = cuotasPendientesDe(compra);
+    if (pendientes.length > 0) {
+      var totalPagadas = compra.cuotas - pendientes.length;
+      var stepperRow = document.createElement("span");
+      stepperRow.className = "calc-cuotas-stepper";
+      var stepperTexto = document.createElement("span");
+      stepperTexto.textContent = "Cuota " + (totalPagadas + 1) + " de " + compra.cuotas +
+        " pendiente" + (pendientes.length > 1 ? " (quedan " + pendientes.length + " sin pagar) · Cobrar:" : " ·");
+      stepperRow.appendChild(stepperTexto);
+
+      if (pendientes.length > 1) {
+        var stepperInput = document.createElement("input");
+        stepperInput.type = "number";
+        stepperInput.className = "calc-cuotas-input";
+        stepperInput.min = "1";
+        stepperInput.max = String(pendientes.length);
+        stepperInput.value = String(Math.max(1, Math.min(calcCuotasCantidad.get(compra.id) || 1, pendientes.length)));
+        stepperInput.addEventListener("click", function (e) { e.stopPropagation(); });
+        stepperInput.addEventListener("change", function () {
+          var val = Math.max(1, Math.min(pendientes.length, Number(stepperInput.value) || 1));
+          stepperInput.value = String(val);
+          calcCuotasCantidad.set(compra.id, val);
+          valueEl.textContent = formatCurrency(montoACobrar(compra));
+          actualizarSeleccionResumen();
+        });
+        stepperRow.appendChild(stepperInput);
+        var stepperSufijo = document.createElement("span");
+        stepperSufijo.textContent = "de " + pendientes.length + " cuota" + (pendientes.length === 1 ? "" : "s");
+        stepperRow.appendChild(stepperSufijo);
+      } else {
+        var soloUna = document.createElement("span");
+        soloUna.textContent = " 1 cuota";
+        stepperRow.appendChild(soloUna);
+      }
+      info.appendChild(stepperRow);
+    }
+
+    row.appendChild(info);
+
+    valueEl.textContent = formatCurrency(montoACobrar(compra));
     row.appendChild(valueEl);
 
     return row;
@@ -120,6 +192,13 @@
     visibles.forEach(function (c) { calcListaEl.appendChild(buildCalcItemRow(c)); });
     actualizarSeleccionResumen();
   }
+
+  calcPersonaSelect.addEventListener("change", function () {
+    // Cambiar de persona limpia la selección: mezclar compras de dos
+    // personas distintas en un mismo comprobante no tendría sentido.
+    calcSeleccionadas.clear();
+    renderCalcLista();
+  });
 
   [calcFilterTexto].forEach(function (el) { el.addEventListener("input", renderCalcLista); });
   [calcFechaDesdeInput, calcFechaHastaInput, calcSoloMarcadasInput].forEach(function (el) {
@@ -135,6 +214,58 @@
     comprasFiltradasCalc().forEach(function (c) { calcSeleccionadas.delete(c.id); });
     renderCalcLista();
   });
+
+  // Tabla propia del comprobante (no la de Informes): acá el monto de cada
+  // fila es lo que realmente se va a cobrar (una o más cuotas, elegido a
+  // mano), no el total de la compra ni la próxima cuota a secas.
+  function buildComprobanteTabla(compras) {
+    var wrap = document.createElement("div");
+    wrap.className = "table-wrapper";
+    var table = document.createElement("table");
+    table.className = "informe-tabla";
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Fecha</th><th>Detalle</th><th class=\"col-value\">Monto a cobrar</th></tr>";
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    compras.forEach(function (c) {
+      var tr = document.createElement("tr");
+
+      var tdFecha = document.createElement("td");
+      tdFecha.textContent = formatDateDisplay(c.fecha);
+      tr.appendChild(tdFecha);
+
+      var tdDetalle = document.createElement("td");
+      var titulo = document.createElement("div");
+      titulo.className = "informe-detalle-titulo";
+      titulo.textContent = compraDisplayName(c);
+      tdDetalle.appendChild(titulo);
+
+      var subPartes = [categoriaLabel(c)];
+      var pendientes = cuotasPendientesDe(c);
+      if (pendientes.length > 0) {
+        var cantidad = Math.max(1, Math.min(calcCuotasCantidad.get(c.id) || 1, pendientes.length));
+        subPartes.push("Cobrando " + cantidad + " de " + pendientes.length + " cuota" + (pendientes.length === 1 ? "" : "s") + " pendiente" + (pendientes.length === 1 ? "" : "s"));
+      } else if (c.pagada) {
+        subPartes.push("Ya estaba pagada — no se cobra de nuevo");
+      }
+      var sub = document.createElement("div");
+      sub.className = "informe-detalle-sub";
+      sub.textContent = subPartes.join(" · ");
+      tdDetalle.appendChild(sub);
+      tr.appendChild(tdDetalle);
+
+      var tdMonto = document.createElement("td");
+      tdMonto.className = "col-value";
+      tdMonto.textContent = formatCurrency(montoACobrar(c));
+      tr.appendChild(tdMonto);
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
 
   function renderCalcResultado(persona, compras) {
     calcResultadoEl.innerHTML = "";
@@ -163,15 +294,9 @@
     header.appendChild(fechaGen);
     calcResultadoEl.appendChild(header);
 
-    // Reusa el mismo armado de tabla que Informes (fecha/detalle/estado/
-    // monto, con el detalle de cuotas si aplica) para que ambos documentos
-    // se vean iguales y consistentes.
-    calcResultadoEl.appendChild(buildInformeTabla(compras));
+    calcResultadoEl.appendChild(buildComprobanteTabla(compras));
 
-    // El total a cobrar es lo que realmente falta por pagar de cada compra
-    // (no el monto en bruto): si alguna ya está pagada o trae cuotas ya
-    // abonadas, no se vuelve a cobrar esa parte.
-    var total = compras.reduce(function (sum, c) { return sum + pendienteTotalDeCompra(c); }, 0);
+    var total = compras.reduce(function (sum, c) { return sum + montoACobrar(c); }, 0);
     var resumen = document.createElement("div");
     resumen.className = "informe-total-general";
     var fila = document.createElement("div");
@@ -204,10 +329,10 @@
 
   calcLimpiarBtn.addEventListener("click", function () {
     calcSeleccionadas.clear();
+    calcCuotasCantidad.clear();
     calcFilterTexto.value = "";
-    var rango = primerYUltimoDiaMes();
-    calcFechaDesdeInput.value = rango.desde;
-    calcFechaHastaInput.value = rango.hasta;
+    calcFechaDesdeInput.value = "";
+    calcFechaHastaInput.value = "";
     calcSoloMarcadasInput.checked = false;
     renderCalcLista();
     calcResultadoEl.innerHTML = "";

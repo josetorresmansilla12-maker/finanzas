@@ -2190,10 +2190,6 @@ tr.compartida-detalle-row .compra-mini-row {
   margin-top: 10px;
 }
 
-.calc-item-row {
-  cursor: pointer;
-}
-
 .calc-item-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -2203,6 +2199,26 @@ tr.compartida-detalle-row .compra-mini-row {
 
 .calc-solo-marcadas-option {
   padding: 8px 14px;
+}
+
+.calc-cuotas-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.calc-cuotas-input {
+  width: 48px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  text-align: center;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* Al imprimir (o "Guardar como PDF"): se oculta todo menos el documento
@@ -2218,6 +2234,13 @@ tr.compartida-detalle-row .compra-mini-row {
 @media print {
   @page {
     margin: 16mm 14mm;
+  }
+
+  /* Todo el documento impreso usa rem, así que bajar el tamaño base achica
+     títulos, tabla y cifras por igual — menos hojas sin que se vea
+     desproporcionado. */
+  html {
+    font-size: 12px;
   }
 
   .app-header,
@@ -2271,5 +2294,27 @@ tr.compartida-detalle-row .compra-mini-row {
   .informe-tabla {
     width: 100%;
     font-size: 0.85rem;
+  }
+
+  .informe-tabla thead th {
+    padding: 6px 8px;
+  }
+
+  .informe-tabla tbody td {
+    padding: 7px 8px;
+  }
+
+  .informe-grupo {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+
+  .informe-grupo-head {
+    margin-bottom: 8px;
+  }
+
+  .informe-report-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
   }
 }
