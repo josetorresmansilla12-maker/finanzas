@@ -2223,9 +2223,13 @@ tr.compartida-detalle-row .compra-mini-row {
 }
 
 .calc-item-row {
+  /* Filas con cuotas traen una tercera línea (el selector de cuánto
+     cobrar) y quedan más altas que el resto: alineado arriba, el
+     checkbox y el monto siempre quedan a la altura del título, en vez de
+     "flotar" centrados en toda la fila cuando esta es más alta. */
+  align-items: flex-start;
   cursor: pointer;
-  padding-left: 4px;
-  padding-right: 4px;
+  padding: 10px 4px;
   border-radius: 6px;
 }
 
@@ -2236,9 +2240,14 @@ tr.compartida-detalle-row .compra-mini-row {
 .calc-item-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  margin-top: 2px;
   flex-shrink: 0;
   accent-color: var(--color-primary);
   cursor: pointer;
+}
+
+.calc-item-row .compra-mini-value {
+  margin-top: 1px;
 }
 
 .calc-solo-marcadas-option {
