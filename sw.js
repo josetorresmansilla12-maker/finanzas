@@ -3,7 +3,7 @@
 // muestra la versión más nueva cuando hay internet, y el caché solo se usa
 // si el teléfono está sin conexión.
 
-var CACHE_NAME = "finanzas-cache-v23";
+var CACHE_NAME = "finanzas-cache-v24";
 var CORE_ASSETS = [
   "./",
   "./index.html",

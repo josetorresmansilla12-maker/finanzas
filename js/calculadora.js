@@ -136,6 +136,16 @@
     });
     row.appendChild(checkbox);
 
+    // Tocar el nombre (o cualquier parte de la fila) también marca/desmarca,
+    // para no tener que apuntarle justo al cuadradito. El selector de
+    // cuotas corta la propagación de su propio click (más abajo) para no
+    // pelearse con esto.
+    row.addEventListener("click", function (e) {
+      if (e.target === checkbox) return;
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
     var info = document.createElement("div");
     info.className = "compra-mini-info";
     var descEl = document.createElement("span");
