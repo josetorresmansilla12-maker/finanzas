@@ -2221,6 +2221,49 @@ tr.compartida-detalle-row .compra-mini-row {
   color: var(--color-text);
 }
 
+.calculadora-desglose-field {
+  padding-top: 6px;
+}
+
+.calculadora-desglose {
+  margin-top: 10px;
+  padding: 4px 14px;
+  background: var(--color-tint);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.calc-desglose-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.calc-desglose-fila:last-child {
+  border-bottom: none;
+}
+
+.calc-desglose-total {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+/* Título editable en la vista previa del comprobante: el subrayado
+   punteado avisa que se puede tocar y cambiar, solo para ese documento. */
+.calc-titulo-editable {
+  cursor: text;
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: 1px;
+}
+
+.calc-titulo-editable:hover,
+.calc-titulo-editable:focus {
+  border-bottom-color: var(--color-primary);
+  outline: none;
+}
+
 /* Al imprimir (o "Guardar como PDF"): se oculta todo menos el documento
    generado (Informes o Calculadora), para que quede limpio y legible sin
    la interfaz de la app alrededor.
@@ -2249,8 +2292,16 @@ tr.compartida-detalle-row .compra-mini-row {
   .informe-filtros-section,
   .informe-resultado-section > .table-header,
   .calculadora-filtros-section,
-  .calculadora-resultado-section > .table-header {
+  .calculadora-resultado-section > .table-header,
+  .calc-edicion-hint {
     display: none !important;
+  }
+
+  /* El subrayado punteado es solo una pista en pantalla de que el texto se
+     puede editar — impreso se ve como texto normal. */
+  .calc-titulo-editable {
+    border-bottom: none;
+    cursor: auto;
   }
 
   .container {

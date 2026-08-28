@@ -21,6 +21,9 @@
   var calcFechaDesdeInput = document.getElementById("calc-fecha-desde");
   var calcFechaHastaInput = document.getElementById("calc-fecha-hasta");
   var calcSoloMarcadasInput = document.getElementById("calc-solo-marcadas");
+  var calcMostrarTodasBtn = document.getElementById("calc-mostrar-todas-btn");
+  var calcVerDesgloseInput = document.getElementById("calc-ver-desglose");
+  var calcDesgloseEl = document.getElementById("calc-desglose");
   var calcSeleccionResumenEl = document.getElementById("calc-seleccion-resumen");
   var calcMarcarTodoBtn = document.getElementById("calc-marcar-todo-btn");
   var calcDesmarcarTodoBtn = document.getElementById("calc-desmarcar-todo-btn");
@@ -40,6 +43,12 @@
   // Cuántas cuotas cobrar de cada compra en cuotas (compraId -> cantidad).
   // Por defecto es 1 aunque no tenga entrada acá (ver montoACobrar).
   var calcCuotasCantidad = new Map();
+
+  // Si está activo, la lista ignora el filtro de persona y muestra TODAS
+  // las compras — por si algo quedó registrado a nombre de otra persona
+  // (o de "Yo") pero en realidad corresponde cobrárselo/aportárselo a la
+  // persona elegida arriba.
+  var calcMostrarTodas = false;
 
   function renderCalculadoraFiltros() {
     if (!calcPersonaSelect) return;
@@ -73,7 +82,10 @@
     var desde = calcFechaDesdeInput.value;
     var hasta = calcFechaHastaInput.value;
     var soloMarcadas = calcSoloMarcadasInput.checked;
-    return comprasDePersona(personaId).filter(function (c) {
+    var base = calcMostrarTodas
+      ? loadCompras().filter(function (c) { return !esCargoFuturo(c); })
+      : comprasDePersona(personaId);
+    return base.filter(function (c) {
       if (soloMarcadas && !calcSeleccionadas.has(c.id)) return false;
       if (!coincideBusqueda(c, termino)) return false;
       if (desde && c.fecha < desde) return false;
@@ -106,6 +118,7 @@
     var total = compras.reduce(function (sum, c) { return sum + montoACobrar(c); }, 0);
     calcSeleccionResumenEl.textContent = compras.length +
       (compras.length === 1 ? " compra marcada · " : " compras marcadas · ") + formatCurrency(total);
+    renderCalcDesglose();
   }
 
   function buildCalcItemRow(compra) {
@@ -133,6 +146,7 @@
     var metaEl = document.createElement("span");
     metaEl.className = "compra-mini-meta";
     var metaTexto = formatDateDisplay(compra.fecha) + " · " + categoriaLabel(compra);
+    if (calcMostrarTodas) metaTexto += " · Compró: " + compradorNombre(compra);
     if (compra.pagada) metaTexto += " · Ya pagada";
     metaEl.textContent = metaTexto;
     info.appendChild(metaEl);
@@ -185,6 +199,57 @@
     return row;
   }
 
+  // Desglose SOLO en pantalla (nunca en el comprobante impreso): cuánto de
+  // lo marcado corresponde a cada tarjeta/método de pago. metodoPagoLabel
+  // ya incluye el dueño de la tarjeta cuando no es propia (ej. "Santander
+  // (Mamá)"), así que esto también responde "cuánto es con la tarjeta de
+  // otra persona" sin tener que calcularlo aparte.
+  function renderCalcDesglose() {
+    if (!calcDesgloseEl) return;
+    calcDesgloseEl.classList.toggle("hidden", !calcVerDesgloseInput.checked);
+    if (!calcVerDesgloseInput.checked) return;
+
+    var compras = loadCompras().filter(function (c) { return calcSeleccionadas.has(c.id); });
+    calcDesgloseEl.innerHTML = "";
+    if (compras.length === 0) {
+      var vacio = document.createElement("p");
+      vacio.className = "empty-state";
+      vacio.textContent = "Marca alguna compra para ver el desglose.";
+      calcDesgloseEl.appendChild(vacio);
+      return;
+    }
+
+    var grupos = {};
+    var orden = [];
+    compras.forEach(function (c) {
+      var label = metodoPagoLabel(c);
+      if (!grupos[label]) { grupos[label] = 0; orden.push(label); }
+      grupos[label] += montoACobrar(c);
+    });
+
+    orden.sort(function (a, b) { return grupos[b] - grupos[a]; }).forEach(function (label) {
+      var fila = document.createElement("div");
+      fila.className = "calc-desglose-fila";
+      var nombre = document.createElement("span");
+      nombre.textContent = label;
+      var valor = document.createElement("span");
+      valor.textContent = formatCurrency(grupos[label]);
+      fila.appendChild(nombre);
+      fila.appendChild(valor);
+      calcDesgloseEl.appendChild(fila);
+    });
+
+    var totalFila = document.createElement("div");
+    totalFila.className = "calc-desglose-fila calc-desglose-total";
+    var totalLabel = document.createElement("span");
+    totalLabel.textContent = "Total";
+    var totalValor = document.createElement("span");
+    totalValor.textContent = formatCurrency(compras.reduce(function (sum, c) { return sum + montoACobrar(c); }, 0));
+    totalFila.appendChild(totalLabel);
+    totalFila.appendChild(totalValor);
+    calcDesgloseEl.appendChild(totalFila);
+  }
+
   function renderCalcLista() {
     var visibles = comprasFiltradasCalc();
     calcListaEl.innerHTML = "";
@@ -199,6 +264,18 @@
     calcSeleccionadas.clear();
     renderCalcLista();
   });
+
+  calcMostrarTodasBtn.addEventListener("click", function () {
+    calcMostrarTodas = !calcMostrarTodas;
+    calcMostrarTodasBtn.classList.toggle("btn-primary", calcMostrarTodas);
+    calcMostrarTodasBtn.classList.toggle("btn-outline", !calcMostrarTodas);
+    calcMostrarTodasBtn.textContent = calcMostrarTodas
+      ? "Mostrando todas las compras — volver a solo esta persona"
+      : "Mostrar todas las compras";
+    renderCalcLista();
+  });
+
+  calcVerDesgloseInput.addEventListener("change", renderCalcDesglose);
 
   [calcFilterTexto].forEach(function (el) { el.addEventListener("input", renderCalcLista); });
   [calcFechaDesdeInput, calcFechaHastaInput, calcSoloMarcadasInput].forEach(function (el) {
@@ -237,8 +314,11 @@
 
       var tdDetalle = document.createElement("td");
       var titulo = document.createElement("div");
-      titulo.className = "informe-detalle-titulo";
+      titulo.className = "informe-detalle-titulo calc-titulo-editable";
       titulo.textContent = compraDisplayName(c);
+      titulo.contentEditable = "true";
+      titulo.spellcheck = false;
+      titulo.title = "Puedes editar este nombre — solo cambia lo que se ve/imprime acá, no toca la compra guardada.";
       tdDetalle.appendChild(titulo);
 
       var subPartes = [categoriaLabel(c)];
@@ -294,6 +374,11 @@
     header.appendChild(fechaGen);
     calcResultadoEl.appendChild(header);
 
+    var hintEdicion = document.createElement("p");
+    hintEdicion.className = "lede-hint calc-edicion-hint";
+    hintEdicion.textContent = "💡 Puedes tocar y editar el nombre de cada compra abajo antes de imprimir — es solo para este comprobante, no cambia nada guardado en la app.";
+    calcResultadoEl.appendChild(hintEdicion);
+
     calcResultadoEl.appendChild(buildComprobanteTabla(compras));
 
     var total = compras.reduce(function (sum, c) { return sum + montoACobrar(c); }, 0);
@@ -334,6 +419,11 @@
     calcFechaDesdeInput.value = "";
     calcFechaHastaInput.value = "";
     calcSoloMarcadasInput.checked = false;
+    calcMostrarTodas = false;
+    calcMostrarTodasBtn.classList.remove("btn-primary");
+    calcMostrarTodasBtn.classList.add("btn-outline");
+    calcMostrarTodasBtn.textContent = "Mostrar todas las compras";
+    calcVerDesgloseInput.checked = false;
     renderCalcLista();
     calcResultadoEl.innerHTML = "";
     calcEmptyState.textContent = "Marca las compras que quieres cobrar y toca \"Generar comprobante\".";

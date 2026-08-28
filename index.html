@@ -955,6 +955,8 @@
               Ver solo las marcadas
             </label>
           </div>
+          <button type="button" id="calc-mostrar-todas-btn" class="btn btn-outline btn-small">Mostrar todas las compras</button>
+          <span class="label-hint">Por si le quieres cobrar (o aportarle) algo que quedó registrado a nombre de otra persona.</span>
         </div>
 
         <div class="calculadora-lista-header">
@@ -966,6 +968,15 @@
         </div>
         <div id="calc-lista" class="calculadora-lista"></div>
         <p id="calc-lista-empty" class="empty-state hidden">No hay compras que calcen con este filtro.</p>
+
+        <div class="field owner-field calculadora-desglose-field">
+          <label class="radio-option">
+            <input type="checkbox" id="calc-ver-desglose" />
+            Desglosar por tarjeta / método de pago
+          </label>
+          <span class="label-hint">Solo para ti: te muestra cuánto de lo marcado corresponde a cada tarjeta o método de pago (por ejemplo, cuánto es con la tarjeta de mamá). No aparece en el comprobante — ahí solo sale el total.</span>
+          <div id="calc-desglose" class="calculadora-desglose hidden"></div>
+        </div>
 
         <div class="form-actions">
           <button type="button" id="calc-generar-btn" class="btn btn-primary">Generar comprobante</button>
