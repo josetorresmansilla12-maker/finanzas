@@ -147,18 +147,37 @@
     return balanceDe(comprasDeudaMia(acreedorId), abonosDeudaMia(acreedorId));
   }
 
-  function deudoresConDeuda() {
+  function todosLosDeudores() {
     var keys = loadCompras().filter(function (c) { return esMeDeben(c) && !esCargoFuturo(c); }).map(deudorKey).filter(Boolean);
-    return Array.from(new Set(keys)).sort(function (a, b) {
-      return balanceMeDeben(b).pendiente - balanceMeDeben(a).pendiente;
-    });
+    return Array.from(new Set(keys));
+  }
+
+  function todosLosAcreedores() {
+    var ids = loadCompras().filter(function (c) { return esDeudaMia(c) && !esCargoFuturo(c); }).map(function (c) { return c.acreedor; });
+    return Array.from(new Set(ids));
+  }
+
+  // Solo quienes todavía deben algo: quien ya quedó al día se va a "Deudas
+  // pagadas" (ver renderDeudasPagadas), para no dejar el listado activo
+  // lleno de tarjetas en $0 que ya no hace falta revisar.
+  function deudoresConDeuda() {
+    return todosLosDeudores().filter(function (key) { return balanceMeDeben(key).pendiente > 0; })
+      .sort(function (a, b) { return balanceMeDeben(b).pendiente - balanceMeDeben(a).pendiente; });
   }
 
   function acreedoresConDeuda() {
-    var ids = loadCompras().filter(function (c) { return esDeudaMia(c) && !esCargoFuturo(c); }).map(function (c) { return c.acreedor; });
-    return Array.from(new Set(ids)).sort(function (a, b) {
-      return balanceDeudaMia(b).pendiente - balanceDeudaMia(a).pendiente;
-    });
+    return todosLosAcreedores().filter(function (id) { return balanceDeudaMia(id).pendiente > 0; })
+      .sort(function (a, b) { return balanceDeudaMia(b).pendiente - balanceDeudaMia(a).pendiente; });
+  }
+
+  function deudoresAlDia() {
+    return todosLosDeudores().filter(function (key) { return balanceMeDeben(key).pendiente <= 0; })
+      .sort(function (a, b) { return deudorNombre(a).localeCompare(deudorNombre(b)); });
+  }
+
+  function acreedoresAlDia() {
+    return todosLosAcreedores().filter(function (id) { return balanceDeudaMia(id).pendiente <= 0; })
+      .sort(function (a, b) { return personaNombre(a).localeCompare(personaNombre(b)); });
   }
 
   function totalMeDeben() {
@@ -672,15 +691,18 @@
 
   // ---------- Tarjeta de deuda (formato unificado para ambas vistas) ----------
   //
-  // Al lado del nombre van solo las dos cifras que importan: lo que se debe
-  // hoy y lo ya devuelto. El detalle de las compras va debajo.
+  // Plegada por defecto: solo el nombre y las dos cifras que importan (lo
+  // que se debe hoy y lo ya devuelto). Todo lo demás — avisos, botones,
+  // compras y abonos — vive adentro y se ve al tocarla, para que la lista
+  // completa de personas quepa de un vistazo en vez de una pantalla larga
+  // de tarjetas todas abiertas.
   function buildDeudaCard(config) {
     var balance = balanceDe(config.compras, config.abonos);
 
-    var card = document.createElement("div");
+    var card = document.createElement("details");
     card.className = "deuda-card";
 
-    var head = document.createElement("div");
+    var head = document.createElement("summary");
     head.className = "deuda-card-head";
 
     var titleWrap = document.createElement("div");
@@ -727,20 +749,23 @@
     head.appendChild(stats);
     card.appendChild(head);
 
+    var body = document.createElement("div");
+    body.className = "deuda-card-body";
+
     // Avisos que explican por qué las cifras no calzan con las etiquetas.
     if (balance.sinAsignar > 0) {
       var libre = document.createElement("p");
       libre.className = "deuda-card-nota";
-      libre.textContent = "💡 " + formatCurrency(balance.sinAsignar) +
-        " ya registrados sin asignar a una compra en particular. Al marcar una como pagada se usan estos primero.";
-      card.appendChild(libre);
+      libre.textContent = "💡 Ya registraste " + formatCurrency(balance.sinAsignar) +
+        " como recibido, pero todavía no quedó ligado a ninguna compra o cuota específica. La próxima vez que marques una como pagada, este dinero se usa primero — así no se cuenta dos veces.";
+      body.appendChild(libre);
     }
     if (balance.sinRespaldo > 0) {
       var sinPlata = document.createElement("p");
       sinPlata.className = "deuda-card-nota aviso";
       sinPlata.textContent = "⚠️ Hay " + formatCurrency(balance.sinRespaldo) +
         " marcados como pagados sin dinero registrado. La deuda sigue contándolos hasta que registres el pago.";
-      card.appendChild(sinPlata);
+      body.appendChild(sinPlata);
     }
 
     var actions = document.createElement("div");
@@ -753,17 +778,27 @@
     addPaymentBtn.textContent = config.botonPago || "➕ Registrar pago parcial";
     addPaymentBtn.addEventListener("click", function () { paymentForm.classList.toggle("hidden"); });
     actions.appendChild(addPaymentBtn);
-    card.appendChild(actions);
-    card.appendChild(paymentForm);
+
+    if (config.onMarcarTodoPagado && balance.pendiente > 0) {
+      var pagarTodoBtn = document.createElement("button");
+      pagarTodoBtn.type = "button";
+      pagarTodoBtn.className = "btn btn-secondary btn-small";
+      pagarTodoBtn.textContent = "✅ Marcar toda la deuda como pagada";
+      pagarTodoBtn.addEventListener("click", function () { config.onMarcarTodoPagado(balance.pendiente); });
+      actions.appendChild(pagarTodoBtn);
+    }
+
+    body.appendChild(actions);
+    body.appendChild(paymentForm);
 
     var compras = config.compras.slice().sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
     if (compras.length > 0) {
       var comprasTitle = document.createElement("div");
       comprasTitle.className = "cuota-subtitle";
       comprasTitle.textContent = "Compras que componen esta deuda";
-      card.appendChild(comprasTitle);
+      body.appendChild(comprasTitle);
       compras.forEach(function (c) {
-        card.appendChild(c.tipo === "cuotas" ? buildCuotaBlock(c) : buildCompraMiniRow(c, { conBotonPagada: true }));
+        body.appendChild(c.tipo === "cuotas" ? buildCuotaBlock(c) : buildCompraMiniRow(c, { conBotonPagada: true }));
       });
     }
 
@@ -772,7 +807,7 @@
       var abonosTitle = document.createElement("div");
       abonosTitle.className = "cuota-subtitle";
       abonosTitle.textContent = config.tituloAbonos || "Pagos registrados";
-      card.appendChild(abonosTitle);
+      body.appendChild(abonosTitle);
       abonos.forEach(function (a) {
         var row = buildAbonoRow(a);
         if (a.aplicarATarjetaId) {
@@ -783,10 +818,11 @@
             : "Pendiente de aplicar a " + tarjetaLabel(a.aplicarATarjetaId);
           row.insertBefore(tag, row.lastChild);
         }
-        card.appendChild(row);
+        body.appendChild(row);
       });
     }
 
+    card.appendChild(body);
     return card;
   }
 
@@ -841,7 +877,13 @@
         tituloAbonos: "Reembolsos recibidos",
         compras: comprasMeDeben(key),
         abonos: abonosMeDeben(key),
-        paymentForm: buildMeDebenPaymentForm(key)
+        paymentForm: buildMeDebenPaymentForm(key),
+        onMarcarTodoPagado: function (pendiente) {
+          pedirConfirmacionPago(
+            "Se registrará " + formatCurrency(pendiente) + " como recibido de " + deudorNombre(key) + " y su deuda quedará al día.",
+            function () { addAbono("me_deben", key, pendiente, todayStamp(), "Marcado como pagado por completo"); }
+          );
+        }
       }));
     });
 
@@ -866,11 +908,63 @@
         abonos: abonosDeudaMia(id),
         paymentForm: buildInlinePaymentForm(function (amount, date, note) {
           addAbono("deuda_mia", id, amount, date, note);
-        })
+        }),
+        onMarcarTodoPagado: function (pendiente) {
+          pedirConfirmacionPago(
+            "Se registrará una devolución de " + formatCurrency(pendiente) + " a " + personaNombre(id) + " y quedarás al día.",
+            function () { addAbono("deuda_mia", id, pendiente, todayStamp(), "Marcado como pagado por completo"); }
+          );
+        }
       }));
     });
 
     deudasMiasPendienteResumenEl.textContent = formatCurrency(totalDeudasMias());
+  }
+
+  // ---------- Deudas pagadas (archivo) ----------
+  //
+  // Quien ya quedó al día sale del listado activo de arriba (para no
+  // llenarlo de tarjetas en $0) pero sigue disponible acá, plegado, por si
+  // hace falta revisar el historial.
+
+  var deudasPagadasList = document.getElementById("deudas-pagadas-list");
+  var deudasPagadasEmpty = document.getElementById("deudas-pagadas-empty");
+
+  function renderDeudasPagadas() {
+    if (!deudasPagadasList) return;
+    var deudores = deudoresAlDia();
+    var acreedores = acreedoresAlDia();
+
+    deudasPagadasEmpty.classList.toggle("hidden", deudores.length !== 0 || acreedores.length !== 0);
+    deudasPagadasList.innerHTML = "";
+
+    deudores.forEach(function (key) {
+      deudasPagadasList.appendChild(buildDeudaCard({
+        titulo: deudorNombre(key),
+        subtitulo: "Ya te devolvió todo lo que le pagaste",
+        labelPagado: "Te devolvió",
+        botonPago: "➕ Registrar reembolso recibido",
+        tituloAbonos: "Reembolsos recibidos",
+        compras: comprasMeDeben(key),
+        abonos: abonosMeDeben(key),
+        paymentForm: buildMeDebenPaymentForm(key)
+      }));
+    });
+
+    acreedores.forEach(function (id) {
+      deudasPagadasList.appendChild(buildDeudaCard({
+        titulo: personaNombre(id),
+        subtitulo: "Ya le devolviste todo lo que puso por ti",
+        labelPagado: "Le devolviste",
+        botonPago: "➕ Registrar devolución",
+        tituloAbonos: "Devoluciones registradas",
+        compras: comprasDeudaMia(id),
+        abonos: abonosDeudaMia(id),
+        paymentForm: buildInlinePaymentForm(function (amount, date, note) {
+          addAbono("deuda_mia", id, amount, date, note);
+        })
+      }));
+    });
   }
 
   // ---------- Saldo neto por persona ----------
@@ -928,6 +1022,7 @@
     renderSaldoNeto();
     renderMeDeben();
     renderDeudasMias();
+    renderDeudasPagadas();
     renderDeudaTarjetasResumen();
   }
 

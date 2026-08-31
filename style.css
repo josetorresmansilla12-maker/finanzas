@@ -1266,6 +1266,41 @@ polyline.trend-line {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Las tarjetas de deuda por persona (Deudas → Me deben / Lo que debo /
+   Deudas pagadas) son <details>/<summary> plegables: por defecto solo se
+   ven el nombre y las dos cifras, y tocando se abre el resto (avisos,
+   botones, compras, abonos). El selector exige que sea justo un <summary>
+   para no afectar el otro lugar que reusa estas mismas clases (los
+   cuadros de "Aportes al hogar" en Estadísticas, que no son plegables). */
+.deuda-card > summary.deuda-card-head {
+  cursor: pointer;
+  list-style: none;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.deuda-card > summary.deuda-card-head::-webkit-details-marker {
+  display: none;
+}
+
+.deuda-card > summary.deuda-card-head::before {
+  content: "▸";
+  margin-right: 6px;
+  color: var(--color-text-muted);
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.deuda-card[open] > summary.deuda-card-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.deuda-card[open] > summary.deuda-card-head::before {
+  transform: rotate(90deg);
+}
+
 .deuda-card-title {
   font-size: 1.15rem;
   font-weight: 700;
