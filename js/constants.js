@@ -13,6 +13,7 @@
   var FIJOS_RECORDATORIOS_KEY = "finanzas_fijos_recordatorios_v1"; // { categoriaId: diaDelMes }
   var MIGRACION_KEY = "finanzas_migracion_v2"; // marca de migración al modelo comprador/acreedor
   var MIGRACION_HOGAR_KEY = "finanzas_migracion_hogar_v1"; // marca de migración al modelo hogar/personal
+  var MIGRACION_CATEGORIAS_KEY = "finanzas_migracion_categorias_v1"; // marca de la reclasificación a Mascotas/Restaurante/etc.
 
   var MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -34,6 +35,7 @@
     { id: "pollo", label: "Pollo", group: "fijo" },
     { id: "saco_papas", label: "Saco de papas", group: "fijo" },
     { id: "farmacia", label: "Farmacia", group: "fijo" },
+    { id: "mascotas", label: "Mascotas", group: "fijo" },
     { id: "otro_fijo", label: "Otro gasto fijo", group: "fijo" },
     { id: "netflix", label: "Netflix", group: "suscripcion" },
     { id: "youtube", label: "YouTube", group: "suscripcion" },
@@ -42,6 +44,7 @@
     { id: "tecnologia", label: "Tecnología", group: "variable" },
     { id: "salud", label: "Salud", group: "variable" },
     { id: "ocio", label: "Ocio / Entretenimiento", group: "variable" },
+    { id: "restaurante", label: "Comida a domicilio / Restaurante", group: "variable" },
     { id: "regalos", label: "Regalos", group: "variable" },
     { id: "autos", label: "Autos", group: "variable" },
     { id: "otro_variable", label: "Otra compra variable", group: "variable" }

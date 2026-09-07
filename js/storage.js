@@ -504,3 +504,55 @@
 
     localStorage.setItem(MIGRACION_HOGAR_KEY, String(Date.now()));
   }
+
+  // Tercera migración: reclasifica compras existentes a categorías nuevas o
+  // mejor ajustadas (Mascotas, Comida a domicilio/Restaurante) cuando el
+  // texto lo deja claro sin lugar a dudas. Corre una sola vez y es a
+  // propósito conservadora: si no hay una señal clara, la compra queda tal
+  // cual estaba — mejor dejarla sin tocar que reclasificarla mal.
+  function migrateCategorias() {
+    if (localStorage.getItem(MIGRACION_CATEGORIAS_KEY)) return;
+
+    function normaliza(v) {
+      return String(v || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    }
+
+    var compras = loadCompras();
+    var cambios = false;
+
+    compras.forEach(function (c) {
+      var desc = normaliza(c.descripcion);
+      var otro = normaliza(c.categoriaOtro);
+      var original = c.categoria;
+
+      // "Regalo" escrito a mano en "Otra compra variable": ya existe la
+      // categoría Regalos, así que no hace falta el texto libre.
+      if (original === "otro_variable" && otro === "regalo") {
+        c.categoria = "regalos";
+      } else if (original === "otro_variable" && (desc.indexOf("tens") !== -1 || desc.indexOf("medicament") !== -1)) {
+        // Dispositivos TENS y medicamentos son gastos de salud.
+        c.categoria = "salud";
+      } else if (original === "otro_variable" && otro.indexOf("carne") !== -1) {
+        c.categoria = "carne";
+      } else if (original === "ocio" && desc.indexOf("carne") !== -1) {
+        // Carne para un asado quedó registrada como "Ocio" en vez de "Carne".
+        c.categoria = "carne";
+      } else if (original === "otro_variable" && desc.indexOf("pollo") !== -1) {
+        c.categoria = "pollo";
+      } else if (original === "otro_variable" && desc.indexOf("lavado") !== -1 && desc.indexOf("auto") !== -1) {
+        c.categoria = "autos";
+      } else if (original === "otro_variable" && (otro.indexOf("mascota") !== -1 || desc.indexOf("mascota") !== -1)) {
+        c.categoria = "mascotas";
+      } else if (original === "otro_variable" && desc.indexOf("pizza") !== -1) {
+        c.categoria = "restaurante";
+      }
+
+      if (c.categoria !== original) {
+        c.categoriaOtro = null;
+        cambios = true;
+      }
+    });
+
+    if (cambios) saveCompras(compras);
+    localStorage.setItem(MIGRACION_CATEGORIAS_KEY, String(Date.now()));
+  }
