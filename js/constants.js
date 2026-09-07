@@ -9,6 +9,7 @@
   var PERSONAS_KEY = "finanzas_personas_conocidas_v1"; // nombres sueltos usados en "me deben" (autocompletar)
   var MIEMBROS_KEY = "finanzas_miembros_v1"; // personas del hogar / acreedores configurables
   var SUELDO_KEY = "finanzas_sueldo_v1"; // ingresos personales, independiente del resto de las finanzas
+  var JUNTAS_KEY = "finanzas_juntas_v1"; // gastos compartidos con amigos (juntas), independiente de compras/deudas
   var SUELDO_DISTRIB_KEY = "finanzas_sueldo_distribucion_v1"; // [{ id, nombre, porcentaje, tipo }]
   var FIJOS_RECORDATORIOS_KEY = "finanzas_fijos_recordatorios_v1"; // { categoriaId: diaDelMes }
   var MIGRACION_KEY = "finanzas_migracion_v2"; // marca de migración al modelo comprador/acreedor
@@ -102,7 +103,8 @@
   var editingCompraId = null;
   var editingCompartidaGrupoId = null;
   var editingSueldoId = null;
-  var pendingDelete = null; // { type: "tarjeta" | "compra" | "abono" | "sueldo", id }
+  var editingJuntaId = null;
+  var pendingDelete = null; // { type: "tarjeta" | "compra" | "abono" | "sueldo" | "junta", id }
   var currentEstadPeriod = "all";
   // Las estadísticas del sueldo arrancan en el mes en curso: cada mes parte
   // limpio y los anteriores quedan a un clic en el selector de periodo.

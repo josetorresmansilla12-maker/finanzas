@@ -69,6 +69,12 @@
   function saveSueldo(list) {
     return saveToStorage(SUELDO_KEY, list);
   }
+  function loadJuntas() {
+    return loadFromStorage(JUNTAS_KEY);
+  }
+  function saveJuntas(list) {
+    return saveToStorage(JUNTAS_KEY, list);
+  }
 
   function loadObjectFromStorage(key) {
     try {

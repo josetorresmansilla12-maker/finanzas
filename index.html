@@ -35,6 +35,7 @@
     <button type="button" class="tab-btn" id="tab-tarjetas-btn" data-tab="tarjetas">Tarjetas</button>
     <button type="button" class="tab-btn" id="tab-informes-btn" data-tab="informes">Informes</button>
     <button type="button" class="tab-btn" id="tab-calculadora-btn" data-tab="calculadora">Calculadora</button>
+    <button type="button" class="tab-btn" id="tab-juntas-btn" data-tab="juntas">Juntas</button>
   </nav>
 
   <main class="container">
@@ -861,7 +862,7 @@
 
       <section class="table-section danger-zone">
         <h2>⚠️ Zona de peligro</h2>
-        <p class="lede-hint">Esto borra permanentemente todos los datos guardados en este dispositivo: tarjetas, compras, deudas, abonos, sueldo y papelera. No se puede deshacer.</p>
+        <p class="lede-hint">Esto borra permanentemente todos los datos guardados en este dispositivo: tarjetas, compras, deudas, abonos, sueldo, juntas y papelera. No se puede deshacer.</p>
         <button type="button" id="delete-all-data-btn" class="btn btn-danger">Eliminar todos los datos</button>
       </section>
     </section>
@@ -1012,6 +1013,88 @@
         <div id="calc-resultado"></div>
       </section>
     </section>
+
+    <!-- ===================== TAB: JUNTAS ===================== -->
+    <section id="tab-juntas" class="tab-panel hidden">
+      <section class="form-section juntas-filtros-section">
+        <h2 id="form-title-junta">🎉 Registrar junta</h2>
+        <p class="lede-hint">Para cuando sales o te juntas con amigos y cada uno pone plata para comprar algo en conjunto. Ingresa quiénes participaron, cuánto aportó cada uno y el total gastado — la boleta se arma sola, mostrando quién le debe a quién para quedar a mano.</p>
+        <form id="junta-form" novalidate>
+          <input type="hidden" id="junta-id" />
+
+          <div class="field">
+            <label for="junta-nombre">Nombre de la junta <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="junta-nombre" placeholder="Ej: Asado del sábado" />
+          </div>
+
+          <div class="field">
+            <label for="junta-fecha">Fecha</label>
+            <input type="date" id="junta-fecha" />
+          </div>
+
+          <div class="field owner-field">
+            <div class="compartida-box">
+              <h3 class="compartida-titulo">👥 Participantes y aportes</h3>
+              <p class="lede-hint">Si alguien no aportó nada, deja su aporte vacío o en $0 — igual queda como participante.</p>
+              <div id="junta-participantes-list" class="participantes-list"></div>
+              <button type="button" id="junta-participante-add-btn" class="btn btn-outline btn-small">➕ Agregar participante</button>
+              <div class="compartida-total-row">
+                <span>Total aportado</span>
+                <strong id="junta-aportes-total">$0</strong>
+              </div>
+              <span class="error-msg" id="error-junta-participantes"></span>
+            </div>
+          </div>
+
+          <div class="field" id="junta-monto-field">
+            <label for="junta-monto">Monto total de la compra <span class="label-hint">(obligatorio)</span></label>
+            <input type="number" id="junta-monto" placeholder="Ej: 35000" min="0" step="1" required />
+            <span class="error-msg" id="error-junta-monto"></span>
+          </div>
+
+          <div class="field owner-field">
+            <div class="compartida-box">
+              <h3 class="compartida-titulo">🧾 Detalle de ítems <span class="label-hint">(opcional)</span></h3>
+              <p class="lede-hint">Si quieres especificar qué se compró.</p>
+              <div id="junta-items-list" class="items-list"></div>
+              <div class="compartida-items-actions">
+                <button type="button" id="junta-item-add-btn" class="btn btn-outline btn-small">➕ Agregar ítem</button>
+                <button type="button" id="junta-items-autocompletar-btn" class="btn btn-secondary btn-small">Calcular total desde los ítems</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field owner-field">
+            <label for="junta-notas">Notas <span class="label-hint">(opcional)</span></label>
+            <input type="text" id="junta-notas" placeholder="Ej: Cumpleaños de Juan" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="submit-junta-btn" class="btn btn-primary">Generar boleta</button>
+            <button type="button" id="cancel-edit-junta-btn" class="btn btn-secondary hidden">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-section juntas-resultado-section">
+        <div class="table-header">
+          <h2>Boleta</h2>
+          <div class="table-actions">
+            <button type="button" id="junta-imprimir-btn" class="btn btn-outline hidden">🖨️ Imprimir / Guardar como PDF</button>
+          </div>
+        </div>
+        <p id="junta-resultado-empty" class="empty-state">Completa el formulario y toca "Generar boleta".</p>
+        <div id="junta-resultado"></div>
+      </section>
+
+      <section class="table-section juntas-historial-section">
+        <div class="table-header">
+          <h2>Juntas anteriores</h2>
+        </div>
+        <p id="juntas-lista-empty" class="empty-state hidden">Todavía no has registrado ninguna junta.</p>
+        <div id="juntas-lista"></div>
+      </section>
+    </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
@@ -1081,7 +1164,7 @@
   <div id="delete-all-confirm-modal" class="modal-overlay hidden">
     <div class="modal">
       <h3>⚠️ Eliminar todos los datos</h3>
-      <p>Esto borrará permanentemente TODA la información guardada en este dispositivo: tarjetas, compras, deudas, abonos, sueldo y papelera. Esta acción no se puede deshacer. ¿Quieres continuar?</p>
+      <p>Esto borrará permanentemente TODA la información guardada en este dispositivo: tarjetas, compras, deudas, abonos, sueldo, juntas y papelera. Esta acción no se puede deshacer. ¿Quieres continuar?</p>
       <div class="modal-actions">
         <button id="delete-all-cancel-btn" class="btn btn-secondary">Cancelar</button>
         <button id="delete-all-confirm-btn" class="btn btn-danger">Sí, eliminar todo</button>
@@ -1105,6 +1188,7 @@
   <script src="js/estadisticas.js"></script>
   <script src="js/informes.js"></script>
   <script src="js/calculadora.js"></script>
+  <script src="js/juntas.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/sync.js"></script>

@@ -13,7 +13,8 @@
       tarjeta: "¿Mover esta tarjeta a la papelera? Las compras ya registradas con ella se conservan.",
       compra: "¿Mover esta compra a la papelera?",
       abono: "¿Eliminar esta devolución/abono? La deuda pendiente aumentará de nuevo en ese monto.",
-      sueldo: "¿Mover este ingreso a la papelera?"
+      sueldo: "¿Mover este ingreso a la papelera?",
+      junta: "¿Mover esta junta a la papelera?"
     };
     confirmMessage.textContent = messages[type] || messages.compra;
     confirmModal.classList.remove("hidden");
@@ -97,6 +98,15 @@
         saveSueldo(sueldos);
       }
       if (editingSueldoId === pendingDelete.id) resetSueldoForm();
+    } else if (pendingDelete.type === "junta") {
+      var juntas = loadJuntas();
+      var jIdx = juntas.findIndex(function (j) { return j.id === pendingDelete.id; });
+      if (jIdx !== -1) {
+        var removedJunta = juntas.splice(jIdx, 1)[0];
+        trashedEntryId = addToTrash("junta", removedJunta);
+        saveJuntas(juntas);
+      }
+      if (editingJuntaId === pendingDelete.id && typeof resetJuntaForm === "function") resetJuntaForm();
     }
 
     closeConfirmModal();
@@ -144,6 +154,9 @@
     if (entry.type === "sueldo") {
       return { icon: "💵", title: entry.data.concepto || "Ingreso", meta: formatCurrency(entry.data.monto) + " · " + formatDateDisplay(entry.data.fecha) };
     }
+    if (entry.type === "junta") {
+      return { icon: "🧾", title: entry.data.nombre || "Junta", meta: formatCurrency(entry.data.total) + " · " + formatDateDisplay(entry.data.fecha) };
+    }
     return { icon: "❓", title: "Registro", meta: "" };
   }
 
@@ -169,6 +182,10 @@
       var sueldos = loadSueldo();
       sueldos.push(entry.data);
       saveSueldo(sueldos);
+    } else if (entry.type === "junta") {
+      var juntas = loadJuntas();
+      juntas.push(entry.data);
+      saveJuntas(juntas);
     }
 
     trash.splice(idx, 1);
@@ -286,14 +303,15 @@
   });
   deleteAllConfirmBtn.addEventListener("click", function () {
     [TARJETAS_KEY, COMPRAS_KEY, ABONOS_KEY, PAPELERA_KEY, PERSONAS_KEY, MIEMBROS_KEY, SUELDO_KEY,
-     SUELDO_DISTRIB_KEY, FIJOS_RECORDATORIOS_KEY, MIGRACION_KEY,
-     MIGRACION_HOGAR_KEY, LAST_BACKUP_KEY].forEach(function (key) {
+     JUNTAS_KEY, SUELDO_DISTRIB_KEY, FIJOS_RECORDATORIOS_KEY, MIGRACION_KEY,
+     MIGRACION_HOGAR_KEY, MIGRACION_CATEGORIAS_KEY, LAST_BACKUP_KEY].forEach(function (key) {
       localStorage.removeItem(key);
     });
     deleteAllConfirmModal.classList.add("hidden");
     resetTarjetaForm();
     resetCompraForm();
     resetSueldoForm();
+    if (typeof resetJuntaForm === "function") resetJuntaForm();
     renderAll();
     showToast("Se eliminaron todos los datos.");
   });

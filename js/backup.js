@@ -12,6 +12,7 @@
       personasConocidas: loadPersonasConocidas(),
       miembros: loadMiembros(),
       sueldo: loadSueldo(),
+      juntas: loadJuntas(),
       distribucionSueldo: loadDistribucion(),
       fijosRecordatorios: allFijosRecordatorios(),
       exportedAt: new Date().toISOString()
@@ -43,6 +44,7 @@
         var importedPersonas = [];
         var importedMiembros = [];
         var importedSueldo = [];
+        var importedJuntas = [];
         var importedFijosRecordatorios = {};
 
         if (imported && typeof imported === "object") {
@@ -52,6 +54,7 @@
           if (Array.isArray(imported.personasConocidas)) importedPersonas = imported.personasConocidas;
           if (Array.isArray(imported.miembros)) importedMiembros = imported.miembros;
           if (Array.isArray(imported.sueldo)) importedSueldo = imported.sueldo;
+          if (Array.isArray(imported.juntas)) importedJuntas = imported.juntas;
           if (imported.fijosRecordatorios && typeof imported.fijosRecordatorios === "object") importedFijosRecordatorios = imported.fijosRecordatorios;
         } else {
           throw new Error("Formato inválido");
@@ -61,7 +64,8 @@
         var validCompras = importedCompras.every(function (item) { return item && typeof item.fecha === "string"; });
         var validAbonos = importedAbonos.every(function (item) { return item && item.amount !== undefined; });
         var validSueldo = importedSueldo.every(function (item) { return item && item.monto !== undefined; });
-        if (!validTarjetas || !validCompras || !validAbonos || !validSueldo) throw new Error("Formato inválido");
+        var validJuntas = importedJuntas.every(function (item) { return item && item.total !== undefined; });
+        if (!validTarjetas || !validCompras || !validAbonos || !validSueldo || !validJuntas) throw new Error("Formato inválido");
 
         var existingTarjetas = loadTarjetas();
         var existingTarjetaIds = new Set(existingTarjetas.map(function (t) { return t.id; }));
@@ -103,6 +107,14 @@
           existingSueldoIds.add(item.id);
         });
 
+        var existingJuntas = loadJuntas();
+        var existingJuntaIds = new Set(existingJuntas.map(function (j) { return j.id; }));
+        importedJuntas.forEach(function (item) {
+          if (!item.id || existingJuntaIds.has(item.id)) item.id = uid();
+          if (!item.createdAt) item.createdAt = Date.now();
+          existingJuntaIds.add(item.id);
+        });
+
         var existingPersonas = loadPersonasConocidas();
         var mergedPersonas = existingPersonas.slice();
         importedPersonas.forEach(function (p) { if (mergedPersonas.indexOf(p) === -1) mergedPersonas.push(p); });
@@ -127,14 +139,16 @@
           mergedPersonas: mergedPersonas,
           mergedMiembros: mergedMiembros,
           mergedSueldo: existingSueldo.concat(importedSueldo),
+          mergedJuntas: existingJuntas.concat(importedJuntas),
           mergedFijosRecordatorios: mergedFijosRecordatorios,
-          counts: { tarjetas: importedTarjetas.length, compras: importedCompras.length, abonos: importedAbonos.length, sueldo: importedSueldo.length }
+          counts: { tarjetas: importedTarjetas.length, compras: importedCompras.length, abonos: importedAbonos.length, sueldo: importedSueldo.length, juntas: importedJuntas.length }
         };
 
         document.getElementById("import-confirm-message").textContent =
           "El archivo contiene " + importedTarjetas.length + " tarjeta(s), " +
           importedCompras.length + " compra(s), " + importedAbonos.length +
-          " devolución/abono(s) y " + importedSueldo.length + " ingreso(s) de sueldo. " +
+          " devolución/abono(s), " + importedSueldo.length + " ingreso(s) de sueldo y " +
+          importedJuntas.length + " junta(s). " +
           "Se mezclarán con los datos actuales sin borrar nada existente. ¿Confirmar importación?";
         document.getElementById("import-confirm-modal").classList.remove("hidden");
       } catch (err) {
@@ -156,12 +170,13 @@
     var okCompras = saveCompras(d.mergedCompras);
     var okAbonos = saveAbonos(d.mergedAbonos);
     var okSueldo = saveSueldo(d.mergedSueldo);
+    var okJuntas = saveJuntas(d.mergedJuntas);
     savePersonasConocidas(d.mergedPersonas);
     saveMiembros(d.mergedMiembros);
     saveObjectToStorage(FIJOS_RECORDATORIOS_KEY, d.mergedFijosRecordatorios);
-    if (okTarjetas && okCompras && okAbonos && okSueldo) {
+    if (okTarjetas && okCompras && okAbonos && okSueldo && okJuntas) {
       renderAll();
-      showToast("Se importaron " + d.counts.tarjetas + " tarjeta(s), " + d.counts.compras + " compra(s), " + d.counts.abonos + " devolución/abono(s) y " + d.counts.sueldo + " ingreso(s).");
+      showToast("Se importaron " + d.counts.tarjetas + " tarjeta(s), " + d.counts.compras + " compra(s), " + d.counts.abonos + " devolución/abono(s), " + d.counts.sueldo + " ingreso(s) y " + d.counts.juntas + " junta(s).");
     }
   });
 

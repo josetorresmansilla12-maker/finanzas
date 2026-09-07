@@ -1970,6 +1970,33 @@ polyline.trend-line {
   }
 }
 
+/* ---------- Juntas (gastos compartidos entre amigos) ---------- */
+.junta-participante-row,
+.junta-item-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.junta-participante-row input,
+.junta-item-row input {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .junta-participante-row,
+  .junta-item-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Aviso: dinero recibido pero no abonado al banco ---------- */
 .aviso-pendiente-banco {
   color: var(--color-warning);
@@ -2381,7 +2408,10 @@ tr.compartida-detalle-row .compra-mini-row {
   .informe-resultado-section > .table-header,
   .calculadora-filtros-section,
   .calculadora-resultado-section > .table-header,
-  .calc-edicion-hint {
+  .calc-edicion-hint,
+  .juntas-filtros-section,
+  .juntas-historial-section,
+  .juntas-resultado-section > .table-header {
     display: none !important;
   }
 
@@ -2399,7 +2429,8 @@ tr.compartida-detalle-row .compra-mini-row {
   }
 
   .informe-resultado-section,
-  .calculadora-resultado-section {
+  .calculadora-resultado-section,
+  .juntas-resultado-section {
     box-shadow: none;
     border-radius: 0;
     padding: 0;
