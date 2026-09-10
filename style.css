@@ -1072,6 +1072,24 @@ polyline.trend-line {
   font-weight: 500;
 }
 
+.app-alert-aplicar-accion {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-alert-amount {
+  width: 130px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
 @media (max-width: 640px) {
   #tarjeta-form,
   #compra-form,

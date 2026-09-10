@@ -122,6 +122,28 @@
     return cuotaPaidTotal(compra);
   }
 
+  // La cuota que le corresponde al próximo ciclo de la TARJETA, por fecha —
+  // a propósito no mira "cuotasPagadas" (esa es una etiqueta de que la
+  // persona ya te devolvió esa cuota, no de que el banco ya la cobró: son
+  // cosas independientes, igual que compra.pagada no afecta el saldo de la
+  // tarjeta). Si ya vencieron todas, se considera vigente la última.
+  function cuotaVigenteDeCompra(compra) {
+    if (compra.tipo !== "cuotas") return null;
+    var schedule = buildCuotaSchedule(compra);
+    if (schedule.length === 0) return null;
+    var hoy = todayStamp();
+    return schedule.find(function (c) { return c.dueIso >= hoy; }) || schedule[schedule.length - 1];
+  }
+
+  // Cuánto de esta compra le toca al próximo estado de cuenta: si es en
+  // cuotas, solo la cuota vigente (no el total de todas); si no, el monto
+  // completo, porque es un cargo de una sola vez.
+  function montoEsteMesDeCompra(compra) {
+    if (compra.tipo !== "cuotas") return Number(compra.monto) || 0;
+    var vigente = cuotaVigenteDeCompra(compra);
+    return vigente ? vigente.amount : 0;
+  }
+
   function balanceDe(compras, abonos) {
     var generado = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
     var recibido = abonos.reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
@@ -399,18 +421,38 @@
   }
 
   function balanceForTarjeta(tarjetaId) {
-    var generado = comprasForTarjeta(tarjetaId).reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+    var compras = comprasForTarjeta(tarjetaId);
+    var generado = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+    var generadoEsteMes = compras.reduce(function (sum, c) { return sum + montoEsteMesDeCompra(c); }, 0);
     var abonado = abonosForTarjeta(tarjetaId).reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
-    return { generado: generado, abonado: abonado, pendiente: Math.max(0, generado - abonado) };
+    return {
+      generado: generado,
+      generadoEsteMes: generadoEsteMes,
+      abonado: abonado,
+      pendiente: Math.max(0, generado - abonado),
+      // Lo que corresponde pagar en el próximo estado de cuenta: solo la
+      // cuota vigente de cada compra en cuotas, no el total de todas.
+      pendienteEsteMes: Math.max(0, generadoEsteMes - abonado)
+    };
   }
 
   // Reembolsos de "me deben" que la persona ya me devolvió, pero que todavía
   // no le he traspasado al banco (estado intermedio a propósito: recibir el
-  // dinero no significa que ya pagué la tarjeta).
+  // dinero no significa que ya pagué la tarjeta). Se puede aplicar de a
+  // poco, así que lo que importa es cuánto de CADA abono sigue sin aplicar
+  // (aplicadoAlBancoMonto), no un simple sí/no.
+  function montoAplicadoDeAbono(abono) {
+    return Math.min(Number(abono.amount) || 0, Number(abono.aplicadoAlBancoMonto) || 0);
+  }
+
+  function montoPendienteDeAplicarDeAbono(abono) {
+    return Math.max(0, (Number(abono.amount) || 0) - montoAplicadoDeAbono(abono));
+  }
+
   function pendienteAplicarBanco(tarjetaId) {
     return loadAbonos().filter(function (a) {
-      return a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId && !a.aplicadoAlBanco;
-    }).reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
+      return a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId;
+    }).reduce(function (sum, a) { return sum + montoPendienteDeAplicarDeAbono(a); }, 0);
   }
 
   function addTarjetaAbonoManual(tarjetaId, amount, date, note) {
@@ -446,34 +488,54 @@
     });
   }
 
-  function aplicarReembolsosABanco(tarjetaId) {
+  // "montoSolicitado" permite aplicar solo una parte de lo recibido (ej.
+  // recibiste $300.000 entre varias personas pero hoy solo alcanzaste a
+  // abonar $200.000 al banco): el resto queda pendiente de aplicar para
+  // más adelante, en vez de forzar todo o nada.
+  function aplicarReembolsosABanco(tarjetaId, montoSolicitado) {
     var pendientes = loadAbonos().filter(function (a) {
-      return a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId && !a.aplicadoAlBanco;
+      return a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId && montoPendienteDeAplicarDeAbono(a) > 0;
     });
     if (pendientes.length === 0) return;
-    var total = pendientes.reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
+    var totalPendiente = pendientes.reduce(function (sum, a) { return sum + montoPendienteDeAplicarDeAbono(a); }, 0);
+    var monto = Math.min(Math.max(0, Number(montoSolicitado) || totalPendiente), totalPendiente);
+    if (monto <= 0) {
+      showToast("Ingresa un monto válido.");
+      return;
+    }
 
-    pedirConfirmacionPago(
-      "Se abonarán " + formatCurrency(total) + " de reembolsos ya recibidos al pago de " + tarjetaLabel(tarjetaId) + ".",
-      function () {
-        var abonos = loadAbonos();
-        abonos.forEach(function (a) {
-          if (a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId && !a.aplicadoAlBanco) {
-            a.aplicadoAlBanco = true;
-          }
-        });
-        abonos.push({
-          id: uid(), tipo: "tarjeta", tarjetaId: tarjetaId, amount: total, date: todayStamp(),
-          note: "Reembolsos de terceros aplicados al pago del banco", createdAt: Date.now(),
-          // Queda anotado de qué reembolsos salió, para poder deshacerlo si
-          // alguno de ellos se elimina después.
-          origenReembolsos: pendientes.map(function (a) { return a.id; })
-        });
-        if (saveAbonos(abonos)) {
-          renderAll();
-          showToast("Reembolsos aplicados al pago de la tarjeta.");
-        }
+    var detalle = monto >= totalPendiente
+      ? "Se abonarán " + formatCurrency(monto) + " de reembolsos ya recibidos al pago de " + tarjetaLabel(tarjetaId) + "."
+      : "Se abonarán " + formatCurrency(monto) + " de los " + formatCurrency(totalPendiente) + " recibidos, al pago de " +
+        tarjetaLabel(tarjetaId) + ". El resto queda pendiente de aplicar más adelante.";
+
+    pedirConfirmacionPago(detalle, function () {
+      var abonos = loadAbonos();
+      var restante = monto;
+      var origenes = [];
+      abonos.forEach(function (a) {
+        if (restante <= 0) return;
+        if (a.tipo !== "me_deben" || a.aplicarATarjetaId !== tarjetaId) return;
+        var pend = montoPendienteDeAplicarDeAbono(a);
+        if (pend <= 0) return;
+        var tomar = Math.min(pend, restante);
+        a.aplicadoAlBancoMonto = montoAplicadoDeAbono(a) + tomar;
+        a.aplicadoAlBanco = montoPendienteDeAplicarDeAbono(a) <= 0;
+        origenes.push(a.id);
+        restante -= tomar;
       });
+      abonos.push({
+        id: uid(), tipo: "tarjeta", tarjetaId: tarjetaId, amount: monto, date: todayStamp(),
+        note: "Reembolsos de terceros aplicados al pago del banco", createdAt: Date.now(),
+        // Queda anotado de qué reembolsos salió, para poder deshacerlo si
+        // alguno de ellos se elimina después.
+        origenReembolsos: origenes
+      });
+      if (saveAbonos(abonos)) {
+        renderAll();
+        showToast(formatCurrency(monto) + " aplicados al pago de la tarjeta.");
+      }
+    });
   }
 
   // ---------- Bloques compartidos ----------
@@ -501,6 +563,19 @@
       metaTexto += " · 🔁 " + compra.recurrenceIndex + "/" + compra.recurrenceTotal;
       var prox = suscripcionProximoCargoIso(compra);
       if (prox) metaTexto += " · próximo " + formatDateDisplay(prox);
+    }
+    // Dentro de una tarjeta puede haber compras de distintas personas y
+    // distintos tipos de pago mezcladas, así que ahí sí vale la pena
+    // mostrar quién compró y si es en cuotas (en "Me deben"/"Lo que debo"
+    // ya se sabe por el título del cuadro, así que no hace falta repetirlo).
+    if (contextoTarjeta) {
+      metaTexto += " · Compró: " + compradorNombre(compra);
+      if (compra.tipo === "cuotas") {
+        var vigente = cuotaVigenteDeCompra(compra);
+        metaTexto += vigente
+          ? " · Cuota " + (vigente.index + 1) + " de " + compra.cuotas + " este ciclo (" + formatCurrency(vigente.amount) + ")"
+          : " · En " + compra.cuotas + " cuotas";
+      }
     }
     metaEl.textContent = metaTexto;
     info.appendChild(descEl);
@@ -811,11 +886,19 @@
       abonos.forEach(function (a) {
         var row = buildAbonoRow(a);
         if (a.aplicarATarjetaId) {
+          var pendApl = montoPendienteDeAplicarDeAbono(a);
+          var aplicado = montoAplicadoDeAbono(a);
           var tag = document.createElement("span");
-          tag.className = "due-badge " + (a.aplicadoAlBanco ? "ok" : "soon");
-          tag.textContent = a.aplicadoAlBanco
-            ? "Ya aplicado a " + tarjetaLabel(a.aplicarATarjetaId)
-            : "Pendiente de aplicar a " + tarjetaLabel(a.aplicarATarjetaId);
+          if (pendApl <= 0) {
+            tag.className = "due-badge ok";
+            tag.textContent = "Ya aplicado a " + tarjetaLabel(a.aplicarATarjetaId);
+          } else if (aplicado > 0) {
+            tag.className = "due-badge soon";
+            tag.textContent = "Aplicado " + formatCurrency(aplicado) + " de " + formatCurrency(a.amount) + " a " + tarjetaLabel(a.aplicarATarjetaId);
+          } else {
+            tag.className = "due-badge soon";
+            tag.textContent = "Pendiente de aplicar a " + tarjetaLabel(a.aplicarATarjetaId);
+          }
           row.insertBefore(tag, row.lastChild);
         }
         body.appendChild(row);
@@ -1115,7 +1198,11 @@
     [
       ["Deuda generada", balance.generado, ""],
       ["Abonado al banco", balance.abonado, ""],
-      ["Pendiente", balance.pendiente, ""],
+      // Separado en dos: cuotas futuras infladas el total, pero solo la
+      // cuota vigente de cada compra en cuotas cae en el próximo estado de
+      // cuenta.
+      ["Pendiente próximo mes", balance.pendienteEsteMes, ""],
+      ["Pendiente total", balance.pendiente, ""],
       // Plata que ya recibiste de otros pero que todavía no le pasaste al
       // banco: es tuya solo de paso.
       ["Reembolsos por abonar", pendienteAplicar, pendienteAplicar > 0 ? "card-alerta" : ""]
@@ -1140,14 +1227,29 @@
       callout.style.marginBottom = "12px";
       var calloutText = document.createElement("span");
       calloutText.className = "app-alert-text";
-      calloutText.textContent = "💰 Dinero recibido (" + formatCurrency(pendienteAplicar) + "), pero aún no abonado a la tarjeta. Confírmalo cuando de verdad lo hayas pagado al banco.";
+      calloutText.textContent = "💰 Dinero recibido (" + formatCurrency(pendienteAplicar) + "), pero aún no abonado a la tarjeta. Indica cuánto de eso ya pagaste al banco — puede ser menos que el total, si solo abonaste una parte.";
       callout.appendChild(calloutText);
+
+      var aplicarAccion = document.createElement("div");
+      aplicarAccion.className = "app-alert-aplicar-accion";
+      var montoAplicarInput = document.createElement("input");
+      montoAplicarInput.type = "number";
+      montoAplicarInput.className = "app-alert-amount";
+      montoAplicarInput.min = "0";
+      montoAplicarInput.max = String(pendienteAplicar);
+      montoAplicarInput.step = "1";
+      montoAplicarInput.value = pendienteAplicar;
+      aplicarAccion.appendChild(montoAplicarInput);
+
       var applyBtn = document.createElement("button");
       applyBtn.type = "button";
       applyBtn.className = "btn btn-secondary btn-small";
       applyBtn.textContent = "Aplicar al pago del banco";
-      applyBtn.addEventListener("click", function () { aplicarReembolsosABanco(tarjeta.id); });
-      callout.appendChild(applyBtn);
+      applyBtn.addEventListener("click", function () {
+        aplicarReembolsosABanco(tarjeta.id, Number(montoAplicarInput.value));
+      });
+      aplicarAccion.appendChild(applyBtn);
+      callout.appendChild(aplicarAccion);
       card.appendChild(callout);
     }
 

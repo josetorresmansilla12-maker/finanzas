@@ -34,13 +34,20 @@
   // deben" y el abono de la tarjeta que lo agrupa. Al borrar el primero hay
   // que restar su monto del segundo (y eliminarlo si queda en cero).
   function descontarDeAbonoDeBanco(abonos, removedAbono) {
-    if (!removedAbono || removedAbono.tipo !== "me_deben" || !removedAbono.aplicadoAlBanco) return abonos;
-    var monto = Number(removedAbono.amount) || 0;
+    if (!removedAbono || removedAbono.tipo !== "me_deben") return abonos;
+    // El monto ya aplicado al banco (puede ser solo una parte del abono, si
+    // se fue aplicando de a poco) es lo único que hay que restar; el resto
+    // nunca llegó a ningún abono de tarjeta.
+    var restante = montoAplicadoDeAbono(removedAbono);
+    if (restante <= 0) return abonos;
 
     return abonos.filter(function (a) {
+      if (restante <= 0) return true;
       if (a.tipo !== "tarjeta" || !Array.isArray(a.origenReembolsos)) return true;
       if (a.origenReembolsos.indexOf(removedAbono.id) === -1) return true;
-      a.amount = Math.max(0, (Number(a.amount) || 0) - monto);
+      var tomar = Math.min(restante, Number(a.amount) || 0);
+      a.amount = Math.max(0, (Number(a.amount) || 0) - tomar);
+      restante -= tomar;
       a.origenReembolsos = a.origenReembolsos.filter(function (id) { return id !== removedAbono.id; });
       return a.amount > 0;
     });
