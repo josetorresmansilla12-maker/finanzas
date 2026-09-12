@@ -13,6 +13,7 @@
   var estadDeboPersonasEl = document.getElementById("estad-debo-personas");
   var estadMeDebenEl = document.getElementById("estad-me-deben");
   var estadDeboTarjetasEl = document.getElementById("estad-debo-tarjetas");
+  var estadDeboTarjetasMioEl = document.getElementById("estad-debo-tarjetas-mio");
   var estadAportesHogarEl = document.getElementById("estad-aportes-hogar");
   var estadAportesHogarEmpty = document.getElementById("estad-aportes-hogar-empty");
   var estadAportesRangeSelect = document.getElementById("estad-aportes-range");
@@ -616,6 +617,9 @@
 
     var totalDeboTarjetas = misTarjetas().reduce(function (sum, t) { return sum + balanceForTarjeta(t.id).pendiente; }, 0);
     estadDeboTarjetasEl.textContent = formatCurrency(totalDeboTarjetas);
+    // Cuánto de esa deuda es por compras mías (no de Colun, papá, etc.): no
+    // descuenta abonos porque esos no son atribuibles a una sola persona.
+    estadDeboTarjetasMioEl.textContent = formatCurrency(totalGeneradoPorComprador(YO.id));
 
     var byCategoria = {};
     compras.forEach(function (c) {

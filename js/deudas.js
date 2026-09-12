@@ -144,28 +144,44 @@
     return vigente ? vigente.amount : 0;
   }
 
-  // Cuánto genera cada persona en el próximo estado de cuenta, sumando todas
-  // mis tarjetas juntas — sirve para saber a quién cobrarle antes de que
-  // llegue el cobro del banco. Colun y papá tienen su propio cuadro porque
-  // son quienes más usan mis tarjetas; el resto (incluidas mis propias
-  // compras) cae en "otros". A propósito no descuenta reembolsos ya
-  // aplicados al banco: esos abonos son por tarjeta, no por persona.
+  // Cuánto genera cada persona en mis tarjetas, sumando todas juntas — sirve
+  // para saber a quién cobrarle. Cada persona lleva DOS cifras, porque una
+  // compra en cuotas (ej. la parrilla de Colun, $200.000 en 6 cuotas) no
+  // debe aparecer solo por su cuota vigente: hay que ver tanto lo que toca
+  // el próximo mes como la deuda completa que queda. Colun y papá tienen su
+  // propio cuadro porque son quienes más usan mis tarjetas; el resto
+  // (incluidas mis propias compras) cae en "otros". A propósito no descuenta
+  // reembolsos ya aplicados al banco: esos abonos son por tarjeta, no por
+  // persona.
   function proximoMesPorPersona() {
     var buckets = {
-      colun: { compras: [], total: 0 },
-      papa: { compras: [], total: 0 },
-      otros: { compras: [], total: 0 }
+      colun: { compras: [], proximoMes: 0, total: 0 },
+      papa: { compras: [], proximoMes: 0, total: 0 },
+      otros: { compras: [], proximoMes: 0, total: 0 }
     };
     misTarjetas().forEach(function (t) {
       comprasForTarjeta(t.id).forEach(function (c) {
-        var monto = montoEsteMesDeCompra(c);
-        if (monto <= 0) return;
         var key = c.comprador === "colun" || c.comprador === "papa" ? c.comprador : "otros";
         buckets[key].compras.push(c);
-        buckets[key].total += monto;
+        buckets[key].proximoMes += montoEsteMesDeCompra(c);
+        buckets[key].total += Number(c.monto) || 0;
       });
     });
     return buckets;
+  }
+
+  // Cuánto ha generado en mis tarjetas un comprador puntual (ej. "yo"),
+  // sin descontar abonos — mismo criterio que proximoMesPorPersona, pero
+  // para aislar a una sola persona (se usa en Estadísticas para mostrar
+  // "lo mío" aparte del resto).
+  function totalGeneradoPorComprador(comprador) {
+    var total = 0;
+    misTarjetas().forEach(function (t) {
+      comprasForTarjeta(t.id).forEach(function (c) {
+        if ((c.comprador || YO.id) === comprador) total += Number(c.monto) || 0;
+      });
+    });
+    return total;
   }
 
   function balanceDe(compras, abonos) {
@@ -788,6 +804,24 @@
     return wrap;
   }
 
+  // Agrupa una lista de compras por quién las compró, conservando el orden
+  // de aparición del primer grupo encontrado. Se usa para separar, dentro de
+  // una misma deuda, los distintos "flujos" de plata (ej. lo que compró
+  // Colun vs. lo que compré yo directamente).
+  function agruparComprasPorComprador(compras) {
+    var grupos = [];
+    var indices = {};
+    compras.forEach(function (c) {
+      var key = compradorKey(c);
+      if (!(key in indices)) {
+        indices[key] = grupos.length;
+        grupos.push({ nombre: compradorNombre(c), compras: [] });
+      }
+      grupos[indices[key]].compras.push(c);
+    });
+    return grupos;
+  }
+
   // ---------- Tarjeta de deuda (formato unificado para ambas vistas) ----------
   //
   // Plegada por defecto: solo el nombre y las dos cifras que importan (lo
@@ -800,6 +834,7 @@
 
     var card = document.createElement("details");
     card.className = "deuda-card";
+    if (config.claveKey) card.dataset.key = config.claveKey;
 
     var head = document.createElement("summary");
     head.className = "deuda-card-head";
@@ -896,9 +931,39 @@
       comprasTitle.className = "cuota-subtitle";
       comprasTitle.textContent = "Compras que componen esta deuda";
       body.appendChild(comprasTitle);
-      compras.forEach(function (c) {
+
+      var renderCompraItem = function (c) {
         body.appendChild(c.tipo === "cuotas" ? buildCuotaBlock(c) : buildCompraMiniRow(c, { conBotonPagada: true }));
-      });
+      };
+
+      // Una misma deuda puede mezclar compras de más de un comprador (ej. a
+      // veces compra Colun con su tarjeta y a veces compro yo directamente,
+      // pero ambas cosas terminan debiéndosele a mamá): en ese caso se
+      // agrupan por comprador con su propio subtotal, para distinguir con
+      // claridad cada flujo de plata aunque el pago final sea uno solo.
+      var grupos = agruparComprasPorComprador(compras);
+      if (grupos.length > 1) {
+        grupos.forEach(function (grupo, i) {
+          var totalGrupo = grupo.compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+          var pendienteGrupo = grupo.compras.reduce(function (sum, c) { return sum + Math.max(0, (Number(c.monto) || 0) - compraCubierta(c)); }, 0);
+
+          var grupoHead = document.createElement("div");
+          grupoHead.className = "compra-grupo-head" + (i === 0 ? " compra-grupo-head-first" : "");
+          var grupoNombre = document.createElement("span");
+          grupoNombre.textContent = "🧑 Compró: " + grupo.nombre;
+          var grupoMonto = document.createElement("span");
+          grupoMonto.textContent = pendienteGrupo > 0
+            ? "Pendiente " + formatCurrency(pendienteGrupo) + " de " + formatCurrency(totalGrupo)
+            : formatCurrency(totalGrupo) + " (al día)";
+          grupoHead.appendChild(grupoNombre);
+          grupoHead.appendChild(grupoMonto);
+          body.appendChild(grupoHead);
+
+          grupo.compras.forEach(renderCompraItem);
+        });
+      } else {
+        compras.forEach(renderCompraItem);
+      }
     }
 
     var abonos = config.abonos.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
@@ -977,6 +1042,7 @@
     meDebenList.innerHTML = "";
     deudores.forEach(function (key) {
       meDebenList.appendChild(buildDeudaCard({
+        claveKey: "me_deben::" + key,
         titulo: deudorNombre(key),
         subtitulo: "Le pagaste tú · pendiente de reembolso",
         labelPagado: "Ya te devolvió",
@@ -1006,6 +1072,7 @@
     deudasMiasList.innerHTML = "";
     acreedores.forEach(function (id) {
       deudasMiasList.appendChild(buildDeudaCard({
+        claveKey: "deuda_mia::" + id,
         titulo: personaNombre(id),
         subtitulo: "Puso la plata por ti · pendiente de devolución",
         labelPagado: "Ya le devolviste",
@@ -1047,6 +1114,7 @@
 
     deudores.forEach(function (key) {
       deudasPagadasList.appendChild(buildDeudaCard({
+        claveKey: "me_deben::" + key,
         titulo: deudorNombre(key),
         subtitulo: "Ya te devolvió todo lo que le pagaste",
         labelPagado: "Te devolvió",
@@ -1060,6 +1128,7 @@
 
     acreedores.forEach(function (id) {
       deudasPagadasList.appendChild(buildDeudaCard({
+        claveKey: "deuda_mia::" + id,
         titulo: personaNombre(id),
         subtitulo: "Ya le devolviste todo lo que puso por ti",
         labelPagado: "Le devolviste",
@@ -1125,12 +1194,34 @@
     });
   }
 
+  // Al marcar algo como pagado o eliminarlo se reconstruyen estas listas
+  // desde cero, lo que por defecto cierra cualquier cuadro <details> que el
+  // usuario tenía abierto (todos vuelven a su estado inicial: cerrado) y,
+  // como la página encoge de golpe, el navegador ajusta el scroll y da la
+  // sensación de que "salta". Se evita guardando qué cuadros (identificados
+  // por su data-key) estaban abiertos y la posición del scroll antes de
+  // reconstruir, para dejarlos tal como estaban después.
+  function conPosicionPreservada(fn) {
+    var abiertos = new Set();
+    document.querySelectorAll("details[data-key][open]").forEach(function (d) { abiertos.add(d.dataset.key); });
+    var scrollY = window.scrollY;
+
+    fn();
+
+    document.querySelectorAll("details[data-key]").forEach(function (d) {
+      if (abiertos.has(d.dataset.key)) d.open = true;
+    });
+    window.scrollTo(0, scrollY);
+  }
+
   function renderDeudas() {
-    renderSaldoNeto();
-    renderMeDeben();
-    renderDeudasMias();
-    renderDeudasPagadas();
-    renderDeudaTarjetasResumen();
+    conPosicionPreservada(function () {
+      renderSaldoNeto();
+      renderMeDeben();
+      renderDeudasMias();
+      renderDeudasPagadas();
+      renderDeudaTarjetasResumen();
+    });
   }
 
   // Resumen rápido de "cuánto tengo que poner yo para pagar cada tarjeta",
@@ -1328,7 +1419,10 @@
   }
 
   // Fila de una compra dentro del desglose de un cuadro de persona: nombre
-  // (con la cuota vigente si aplica) y el monto que le toca el próximo mes.
+  // (con la cuota vigente si aplica) y su monto. En cuotas se muestran las
+  // dos cifras — lo que toca el próximo mes y el total de la compra — para
+  // no esconder, por ejemplo, que una parrilla de $200.000 en cuotas sigue
+  // debiendo el total aunque el próximo cobro sea solo una cuota.
   function buildProximoMesConceptoRow(compra) {
     var row = document.createElement("div");
     row.className = "card-desglosable-concepto";
@@ -1344,42 +1438,67 @@
 
     var monto = document.createElement("span");
     monto.className = "card-desglosable-concepto-monto";
-    monto.textContent = formatCurrency(montoEsteMesDeCompra(compra));
+    monto.textContent = compra.tipo === "cuotas"
+      ? formatCurrency(montoEsteMesDeCompra(compra)) + " próx. mes · " + formatCurrency(compra.monto) + " total"
+      : formatCurrency(compra.monto);
     row.appendChild(monto);
 
     return row;
   }
 
-  // Cuadro interactivo por persona: plegado solo se ve el total, y al tocarlo
-  // se despliega el detalle de qué compras lo componen (mismo patrón que las
-  // tarjetas de deuda por persona en la pestaña Deudas).
-  function buildProximoMesPersonaCard(titulo, bucket) {
+  // Fila de dos cifras lado a lado (ej. "Próx. mes" / "Total"), reusada en el
+  // cuadro global y en cada cuadro de persona: una compra en cuotas no debe
+  // resumirse solo en su cuota vigente, porque esconde la deuda completa que
+  // todavía queda.
+  function buildStatsRow(pares) {
+    var row = document.createElement("div");
+    row.className = "card-desglosable-stats";
+    pares.forEach(function (par) {
+      var stat = document.createElement("div");
+      stat.className = "card-desglosable-stat";
+      var lbl = document.createElement("span");
+      lbl.className = "card-sublabel";
+      lbl.textContent = par[0];
+      var val = document.createElement("span");
+      val.className = "card-desglosable-stat-value";
+      val.textContent = formatCurrency(par[1]);
+      stat.appendChild(lbl);
+      stat.appendChild(val);
+      row.appendChild(stat);
+    });
+    return row;
+  }
+
+  // Cuadro interactivo por persona: plegado solo se ven las dos cifras
+  // (próximo mes y total), y al tocarlo se despliega el detalle de qué
+  // compras lo componen (mismo patrón que las tarjetas de deuda por persona
+  // en la pestaña Deudas). "clave" identifica el cuadro de forma estable
+  // para poder mantenerlo abierto entre renders (ver conservarAbiertos).
+  function buildProximoMesPersonaCard(titulo, clave, bucket) {
     var card = document.createElement("details");
     card.className = "card card-desglosable";
+    card.dataset.key = "proximo-mes-persona::" + clave;
 
     var head = document.createElement("summary");
     head.className = "card-desglosable-head";
     var label = document.createElement("span");
     label.className = "card-label";
-    label.textContent = "Pendiente próx. mes: " + titulo;
-    var value = document.createElement("span");
-    value.className = "card-value";
-    value.textContent = formatCurrency(bucket.total);
+    label.textContent = titulo;
+    head.appendChild(label);
+    head.appendChild(buildStatsRow([["Próx. mes", bucket.proximoMes], ["Total", bucket.total]]));
     var hint = document.createElement("span");
     hint.className = "card-sublabel";
     hint.textContent = "Toca para ver el detalle";
-    head.appendChild(label);
-    head.appendChild(value);
     head.appendChild(hint);
     card.appendChild(head);
 
     var body = document.createElement("div");
     body.className = "card-desglosable-body";
-    var compras = bucket.compras.slice().sort(function (a, b) { return montoEsteMesDeCompra(b) - montoEsteMesDeCompra(a); });
+    var compras = bucket.compras.slice().sort(function (a, b) { return (Number(b.monto) || 0) - (Number(a.monto) || 0); });
     if (compras.length === 0) {
       var empty = document.createElement("p");
       empty.className = "card-desglosable-empty";
-      empty.textContent = "Sin compras que generen cobro el próximo mes.";
+      empty.textContent = "Sin compras cargadas a mis tarjetas.";
       body.appendChild(empty);
     } else {
       compras.forEach(function (c) { body.appendChild(buildProximoMesConceptoRow(c)); });
@@ -1398,7 +1517,8 @@
     if (!el) return;
 
     var buckets = proximoMesPorPersona();
-    var global = buckets.colun.total + buckets.papa.total + buckets.otros.total;
+    var globalProximoMes = buckets.colun.proximoMes + buckets.papa.proximoMes + buckets.otros.proximoMes;
+    var globalTotal = buckets.colun.total + buckets.papa.total + buckets.otros.total;
 
     el.innerHTML = "";
 
@@ -1406,34 +1526,33 @@
     globalCard.className = "card";
     var globalLabel = document.createElement("span");
     globalLabel.className = "card-label";
-    globalLabel.textContent = "Pendiente próx. mes (todas las personas)";
-    var globalValue = document.createElement("span");
-    globalValue.className = "card-value";
-    globalValue.textContent = formatCurrency(global);
+    globalLabel.textContent = "Pendiente (todas las personas)";
     globalCard.appendChild(globalLabel);
-    globalCard.appendChild(globalValue);
+    globalCard.appendChild(buildStatsRow([["Próx. mes", globalProximoMes], ["Total", globalTotal]]));
     el.appendChild(globalCard);
 
-    el.appendChild(buildProximoMesPersonaCard(personaNombre("colun"), buckets.colun));
-    el.appendChild(buildProximoMesPersonaCard(personaNombre("papa"), buckets.papa));
-    el.appendChild(buildProximoMesPersonaCard("Otros", buckets.otros));
+    el.appendChild(buildProximoMesPersonaCard(personaNombre("colun"), "colun", buckets.colun));
+    el.appendChild(buildProximoMesPersonaCard(personaNombre("papa"), "papa", buckets.papa));
+    el.appendChild(buildProximoMesPersonaCard("Otros", "otros", buckets.otros));
   }
 
   function renderDeudaTarjetas() {
-    var tarjetas = misTarjetas().slice().sort(function (a, b) {
-      return balanceForTarjeta(b.id).pendiente - balanceForTarjeta(a.id).pendiente;
+    conPosicionPreservada(function () {
+      var tarjetas = misTarjetas().slice().sort(function (a, b) {
+        return balanceForTarjeta(b.id).pendiente - balanceForTarjeta(a.id).pendiente;
+      });
+
+      renderProximoMesPorPersona();
+
+      tarjetasDeudaEmptyState.classList.toggle("hidden", tarjetas.length !== 0);
+      tarjetasDeudaList.innerHTML = "";
+      tarjetas.forEach(function (t) { tarjetasDeudaList.appendChild(buildTarjetaDeudaCard(t)); });
+
+      var totalPendiente = tarjetas.reduce(function (sum, t) { return sum + balanceForTarjeta(t.id).pendiente; }, 0);
+      tarjetasDeudaTotalEl.textContent = formatCurrency(totalPendiente);
+
+      renderArchivoTarjetas();
     });
-
-    renderProximoMesPorPersona();
-
-    tarjetasDeudaEmptyState.classList.toggle("hidden", tarjetas.length !== 0);
-    tarjetasDeudaList.innerHTML = "";
-    tarjetas.forEach(function (t) { tarjetasDeudaList.appendChild(buildTarjetaDeudaCard(t)); });
-
-    var totalPendiente = tarjetas.reduce(function (sum, t) { return sum + balanceForTarjeta(t.id).pendiente; }, 0);
-    tarjetasDeudaTotalEl.textContent = formatCurrency(totalPendiente);
-
-    renderArchivoTarjetas();
   }
 
   // ---------- Estados de cuenta pasados ----------

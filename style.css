@@ -619,6 +619,24 @@ td.col-actions {
   color: var(--color-text-muted);
 }
 
+.compra-grupo-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.compra-grupo-head-first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .abono-row {
   display: flex;
   justify-content: space-between;
@@ -2056,6 +2074,24 @@ polyline.trend-line {
   display: none;
 }
 
+.card-desglosable-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-desglosable-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-desglosable-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
 .card-desglosable-body {
   margin-top: 12px;
   padding-top: 12px;
@@ -2067,14 +2103,14 @@ polyline.trend-line {
 
 .card-desglosable-concepto {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  gap: 2px;
   font-size: 0.85rem;
 }
 
 .card-desglosable-concepto-monto {
   font-weight: 600;
-  white-space: nowrap;
+  color: var(--color-text-muted);
 }
 
 .card-desglosable-empty {
