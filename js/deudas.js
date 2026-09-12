@@ -144,6 +144,30 @@
     return vigente ? vigente.amount : 0;
   }
 
+  // Cuánto genera cada persona en el próximo estado de cuenta, sumando todas
+  // mis tarjetas juntas — sirve para saber a quién cobrarle antes de que
+  // llegue el cobro del banco. Colun y papá tienen su propio cuadro porque
+  // son quienes más usan mis tarjetas; el resto (incluidas mis propias
+  // compras) cae en "otros". A propósito no descuenta reembolsos ya
+  // aplicados al banco: esos abonos son por tarjeta, no por persona.
+  function proximoMesPorPersona() {
+    var buckets = {
+      colun: { compras: [], total: 0 },
+      papa: { compras: [], total: 0 },
+      otros: { compras: [], total: 0 }
+    };
+    misTarjetas().forEach(function (t) {
+      comprasForTarjeta(t.id).forEach(function (c) {
+        var monto = montoEsteMesDeCompra(c);
+        if (monto <= 0) return;
+        var key = c.comprador === "colun" || c.comprador === "papa" ? c.comprador : "otros";
+        buckets[key].compras.push(c);
+        buckets[key].total += monto;
+      });
+    });
+    return buckets;
+  }
+
   function balanceDe(compras, abonos) {
     var generado = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
     var recibido = abonos.reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
@@ -1303,10 +1327,104 @@
     return card;
   }
 
+  // Fila de una compra dentro del desglose de un cuadro de persona: nombre
+  // (con la cuota vigente si aplica) y el monto que le toca el próximo mes.
+  function buildProximoMesConceptoRow(compra) {
+    var row = document.createElement("div");
+    row.className = "card-desglosable-concepto";
+
+    var nombre = document.createElement("span");
+    var texto = compraDisplayName(compra);
+    if (compra.tipo === "cuotas") {
+      var vigente = cuotaVigenteDeCompra(compra);
+      if (vigente) texto += " (cuota " + (vigente.index + 1) + "/" + compra.cuotas + ")";
+    }
+    nombre.textContent = texto;
+    row.appendChild(nombre);
+
+    var monto = document.createElement("span");
+    monto.className = "card-desglosable-concepto-monto";
+    monto.textContent = formatCurrency(montoEsteMesDeCompra(compra));
+    row.appendChild(monto);
+
+    return row;
+  }
+
+  // Cuadro interactivo por persona: plegado solo se ve el total, y al tocarlo
+  // se despliega el detalle de qué compras lo componen (mismo patrón que las
+  // tarjetas de deuda por persona en la pestaña Deudas).
+  function buildProximoMesPersonaCard(titulo, bucket) {
+    var card = document.createElement("details");
+    card.className = "card card-desglosable";
+
+    var head = document.createElement("summary");
+    head.className = "card-desglosable-head";
+    var label = document.createElement("span");
+    label.className = "card-label";
+    label.textContent = "Pendiente próx. mes: " + titulo;
+    var value = document.createElement("span");
+    value.className = "card-value";
+    value.textContent = formatCurrency(bucket.total);
+    var hint = document.createElement("span");
+    hint.className = "card-sublabel";
+    hint.textContent = "Toca para ver el detalle";
+    head.appendChild(label);
+    head.appendChild(value);
+    head.appendChild(hint);
+    card.appendChild(head);
+
+    var body = document.createElement("div");
+    body.className = "card-desglosable-body";
+    var compras = bucket.compras.slice().sort(function (a, b) { return montoEsteMesDeCompra(b) - montoEsteMesDeCompra(a); });
+    if (compras.length === 0) {
+      var empty = document.createElement("p");
+      empty.className = "card-desglosable-empty";
+      empty.textContent = "Sin compras que generen cobro el próximo mes.";
+      body.appendChild(empty);
+    } else {
+      compras.forEach(function (c) { body.appendChild(buildProximoMesConceptoRow(c)); });
+    }
+    card.appendChild(body);
+
+    card.addEventListener("toggle", function () {
+      hint.textContent = card.open ? "Toca para ocultar el detalle" : "Toca para ver el detalle";
+    });
+
+    return card;
+  }
+
+  function renderProximoMesPorPersona() {
+    var el = document.getElementById("proximo-mes-personas-resumen");
+    if (!el) return;
+
+    var buckets = proximoMesPorPersona();
+    var global = buckets.colun.total + buckets.papa.total + buckets.otros.total;
+
+    el.innerHTML = "";
+
+    var globalCard = document.createElement("div");
+    globalCard.className = "card";
+    var globalLabel = document.createElement("span");
+    globalLabel.className = "card-label";
+    globalLabel.textContent = "Pendiente próx. mes (todas las personas)";
+    var globalValue = document.createElement("span");
+    globalValue.className = "card-value";
+    globalValue.textContent = formatCurrency(global);
+    globalCard.appendChild(globalLabel);
+    globalCard.appendChild(globalValue);
+    el.appendChild(globalCard);
+
+    el.appendChild(buildProximoMesPersonaCard(personaNombre("colun"), buckets.colun));
+    el.appendChild(buildProximoMesPersonaCard(personaNombre("papa"), buckets.papa));
+    el.appendChild(buildProximoMesPersonaCard("Otros", buckets.otros));
+  }
+
   function renderDeudaTarjetas() {
     var tarjetas = misTarjetas().slice().sort(function (a, b) {
       return balanceForTarjeta(b.id).pendiente - balanceForTarjeta(a.id).pendiente;
     });
+
+    renderProximoMesPorPersona();
 
     tarjetasDeudaEmptyState.classList.toggle("hidden", tarjetas.length !== 0);
     tarjetasDeudaList.innerHTML = "";

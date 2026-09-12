@@ -2043,6 +2043,46 @@ polyline.trend-line {
   box-shadow: 0 0 0 2px var(--color-primary);
 }
 
+/* ---------- Cuadros de estadística desplegables (desglose por persona) --- */
+.card-desglosable > summary.card-desglosable-head {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-desglosable > summary.card-desglosable-head::-webkit-details-marker {
+  display: none;
+}
+
+.card-desglosable-body {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-desglosable-concepto {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.card-desglosable-concepto-monto {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.card-desglosable-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
 .compras-resaltado-banner {
   display: flex;
   align-items: center;

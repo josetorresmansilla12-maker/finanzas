@@ -299,18 +299,6 @@
 
       <section class="table-section">
         <div class="table-header">
-          <h2>🏠 Gastos fijos y suscripciones</h2>
-          <div class="table-actions">
-            <button type="button" id="export-fijos-csv-btn" class="btn btn-outline">Exportar Excel (.csv)</button>
-          </div>
-        </div>
-        <p class="lede-hint">Cuentas del hogar, alimentos y suscripciones/streaming.</p>
-        <div id="fijos-months-wrapper"></div>
-        <p id="fijos-empty-state" class="empty-state hidden">Aún no hay gastos fijos registrados.</p>
-      </section>
-
-      <section class="table-section">
-        <div class="table-header">
           <h2>🛍️ Compras variables</h2>
           <div class="table-actions">
             <button type="button" id="export-variables-csv-btn" class="btn btn-outline">Exportar Excel (.csv)</button>
@@ -319,6 +307,18 @@
         <p class="lede-hint">Ropa, tecnología, ocio, autos y otras compras variables.</p>
         <div id="variables-months-wrapper"></div>
         <p id="variables-empty-state" class="empty-state hidden">Aún no hay compras variables registradas.</p>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🏠 Gastos fijos y suscripciones</h2>
+          <div class="table-actions">
+            <button type="button" id="export-fijos-csv-btn" class="btn btn-outline">Exportar Excel (.csv)</button>
+          </div>
+        </div>
+        <p class="lede-hint">Cuentas del hogar, alimentos y suscripciones/streaming.</p>
+        <div id="fijos-months-wrapper"></div>
+        <p id="fijos-empty-state" class="empty-state hidden">Aún no hay gastos fijos registrados.</p>
       </section>
     </section>
 
@@ -390,6 +390,14 @@
           <span class="card-label">Debo en tarjetas (total)</span>
           <span class="card-value" id="tarjetas-deuda-total-resumen">$0</span>
         </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>📅 Pendiente próximo mes por persona</h2>
+        </div>
+        <p class="lede-hint">Cuánto de la próxima cuota de todas tus tarjetas corresponde a compras de cada quien, para saber a quién cobrarle antes de que llegue el cobro del banco. Toca un cuadro para ver el detalle.</p>
+        <section class="summary-cards" id="proximo-mes-personas-resumen"></section>
       </section>
 
       <section class="table-section">
