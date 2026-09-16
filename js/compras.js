@@ -33,6 +33,8 @@
   var compraCompradorOtroInput = document.getElementById("compra-comprador-otro");
   var compraCompradorOtroStatsInput = document.getElementById("compra-comprador-otro-stats");
   var compraAcreedorSelect = document.getElementById("compra-acreedor");
+  var compraPagoTercerosField = document.getElementById("compra-pago-terceros-field");
+  var compraPagoTercerosInput = document.getElementById("compra-pago-terceros");
   var compraPersonaField = document.getElementById("compra-persona-field");
   var compraPersonaInput = document.getElementById("compra-persona");
   var compraFechaAcordadaField = document.getElementById("compra-fecha-acordada-field");
@@ -247,6 +249,16 @@
     compraPersonaField.classList.toggle("hidden", !necesitaPersonaLibre);
     if (!necesitaPersonaLibre) compraPersonaInput.value = "";
 
+    // Atajo para el caso "compré esto con mi plata para que alguien más no
+    // se quedara sin dinero": solo tiene sentido cuando el comprador soy yo
+    // (si compró otra persona, ella misma ya queda como deudora al elegir
+    // "A mí" en el select de abajo, sin necesitar este atajo). El checkbox
+    // solo refleja/activa el mismo estado que ya representan comprador +
+    // acreedor, para no duplicar dónde vive el dato.
+    var mostrarPagoTerceros = comprador === YO.id;
+    compraPagoTercerosField.classList.toggle("hidden", !mostrarPagoTerceros);
+    compraPagoTercerosInput.checked = mostrarPagoTerceros && necesitaPersonaLibre;
+
     // La fecha acordada solo tiene sentido cuando la compra genera una
     // deuda real (a alguien se le debe, o alguien me debe a mí). Queda
     // siempre en blanco por defecto: el usuario la escribe si quiere.
@@ -279,6 +291,10 @@
   compraCompradorSelect.addEventListener("change", updateDeudaDependentFields);
   compraCompradorOtroInput.addEventListener("input", updateDeudaDependentFields);
   compraAcreedorSelect.addEventListener("change", updateDeudaDependentFields);
+  compraPagoTercerosInput.addEventListener("change", function () {
+    compraAcreedorSelect.value = compraPagoTercerosInput.checked ? "mi" : "nadie";
+    updateDeudaDependentFields();
+  });
   document.querySelectorAll('input[name="compra-hogar"]').forEach(function (radio) {
     radio.addEventListener("change", updateDeudaDependentFields);
   });
@@ -572,6 +588,7 @@
     compraCompradorField.classList.toggle("hidden", activa);
     compraHogarField.classList.toggle("hidden", activa);
     compraAcreedorField.classList.toggle("hidden", activa);
+    compraPagoTercerosField.classList.toggle("hidden", activa);
 
     if (activa) {
       compraCompradorOtroField.classList.add("hidden");
@@ -973,6 +990,7 @@
     compraCompradorOtroField.classList.add("hidden");
     compraHogarField.classList.add("hidden");
     compraAcreedorField.classList.add("hidden");
+    compraPagoTercerosField.classList.add("hidden");
     compraPersonaField.classList.add("hidden");
     compraOrigenField.classList.add("hidden");
     compraSobreField.classList.add("hidden");
