@@ -55,6 +55,8 @@
   var compraParticipantesListEl = document.getElementById("compra-participantes-list");
   var compraParticipanteAddBtn = document.getElementById("compra-participante-add-btn");
   var compraCompartidaTotalEl = document.getElementById("compra-compartida-total");
+  var compraCompartidaAcreedorSelect = document.getElementById("compra-compartida-acreedor");
+  var compraCompartidaAcreedorHint = document.getElementById("compra-compartida-acreedor-hint");
   var compraItemsListEl = document.getElementById("compra-items-list");
   var compraItemAddBtn = document.getElementById("compra-item-add-btn");
   var compraItemsAutocompletarBtn = document.getElementById("compra-items-autocompletar-btn");
@@ -443,6 +445,21 @@
     });
   }
 
+  // Explica en palabras qué va a pasar con la deuda de cada participante,
+  // según quién puso la plata para toda la compra.
+  function updateCompartidaAcreedorHint() {
+    var val = compraCompartidaAcreedorSelect.value || "yo";
+    if (val === "yo") {
+      compraCompartidaAcreedorHint.textContent = "Cada participante (menos tú) queda debiéndote su parte.";
+    } else if (val === "nadie") {
+      compraCompartidaAcreedorHint.textContent = "Solo se registra el gasto de cada uno, sin generar ninguna deuda.";
+    } else {
+      compraCompartidaAcreedorHint.textContent = "Cada participante, incluido tú si participas, queda debiéndole su parte a " + personaNombre(val) + ".";
+    }
+  }
+
+  compraCompartidaAcreedorSelect.addEventListener("change", updateCompartidaAcreedorHint);
+
   function recomputeCompartidaTotal() {
     var total = 0;
     compraParticipantesListEl.querySelectorAll(".participante-monto").forEach(function (inp) {
@@ -605,6 +622,7 @@
         addParticipanteRow();
         addParticipanteRow();
       }
+      updateCompartidaAcreedorHint();
     } else {
       updateDeudaDependentFields();
       updateCategoriaDependentFields();
@@ -713,9 +731,27 @@
       return { nombre: p.nombre, monto: p.monto };
     });
 
+    // Quién puso la plata por todo el grupo decide a quién le queda debiendo
+    // cada participante: normalmente eres tú (el resto te debe su parte),
+    // pero si fue un tercero (ej. le pediste plata a mamá para invitar a
+    // Colun), cada uno — incluido tú, si participas — le queda debiendo a
+    // esa persona.
+    var compartidaAcreedorValue = compraCompartidaAcreedorSelect.value || "yo";
+
     var compras = loadCompras();
     resultado.participantes.forEach(function (p) {
       var esYo = p.personaId === YO.id;
+      var acreedor, aplicaFechaAcordada;
+      if (compartidaAcreedorValue === "yo") {
+        acreedor = esYo ? "nadie" : "mi";
+        aplicaFechaAcordada = !esYo;
+      } else if (compartidaAcreedorValue === "nadie") {
+        acreedor = "nadie";
+        aplicaFechaAcordada = false;
+      } else {
+        acreedor = compartidaAcreedorValue;
+        aplicaFechaAcordada = true;
+      }
       compras.push({
         id: uid(), createdAt: Date.now(),
         tipo: "unico", categoria: categoria, categoriaOtro: categoriaOtro, auto: auto,
@@ -725,8 +761,8 @@
         metodoPago: esTarjeta ? null : metodoPagoValue,
         comprador: p.esOtro ? COMPRADOR_OTRO.id : p.personaId,
         compradorOtro: p.esOtro ? p.nombre : null,
-        acreedor: esYo ? "nadie" : "mi",
-        fechaPagoAcordada: esYo ? null : fechaPagoAcordada,
+        acreedor: acreedor,
+        fechaPagoAcordada: aplicaFechaAcordada ? fechaPagoAcordada : null,
         persona: null,
         esHogar: false,
         origenDinero: null,
@@ -858,6 +894,7 @@
     populatePersonaSelects();
     compraCompradorSelect.value = YO.id;
     compraAcreedorSelect.value = "nadie";
+    compraCompartidaAcreedorSelect.value = "yo";
     buildAutoOptions();
     compraSuscripcionRepiteInput.checked = false;
     compraSuscripcionMesesInput.classList.add("hidden");

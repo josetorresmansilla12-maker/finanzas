@@ -21,6 +21,7 @@
   var calcFechaDesdeInput = document.getElementById("calc-fecha-desde");
   var calcFechaHastaInput = document.getElementById("calc-fecha-hasta");
   var calcSoloMarcadasInput = document.getElementById("calc-solo-marcadas");
+  var calcMostrarPagadasInput = document.getElementById("calc-mostrar-pagadas");
   var calcMostrarTodasBtn = document.getElementById("calc-mostrar-todas-btn");
   var calcVerDesgloseInput = document.getElementById("calc-ver-desglose");
   var calcDesgloseEl = document.getElementById("calc-desglose");
@@ -54,7 +55,11 @@
     if (!calcPersonaSelect) return;
     var previousValue = calcPersonaSelect.value;
     calcPersonaSelect.innerHTML = "";
-    loadMiembros().forEach(function (p) {
+    // "Yo" va al final: el uso más común es cobrarle a otra persona, así que
+    // el default (primera opción) sigue siendo un integrante del hogar. Se
+    // agrega para poder revisar tus propias compras acá también — ej. las
+    // que le debes a un tercero que puso la plata por una compra compartida.
+    loadMiembros().concat([YO]).forEach(function (p) {
       var opt = document.createElement("option");
       opt.value = p.id;
       opt.textContent = p.nombre;
@@ -82,11 +87,13 @@
     var desde = calcFechaDesdeInput.value;
     var hasta = calcFechaHastaInput.value;
     var soloMarcadas = calcSoloMarcadasInput.checked;
+    var mostrarPagadas = calcMostrarPagadasInput.checked;
     var base = calcMostrarTodas
       ? loadCompras().filter(function (c) { return !esCargoFuturo(c); })
       : comprasDePersona(personaId);
     return base.filter(function (c) {
       if (soloMarcadas && !calcSeleccionadas.has(c.id)) return false;
+      if (!mostrarPagadas && compraEstaPagada(c)) return false;
       if (!coincideBusqueda(c, termino)) return false;
       if (desde && c.fecha < desde) return false;
       if (hasta && c.fecha > hasta) return false;
@@ -99,6 +106,14 @@
   function cuotasPendientesDe(compra) {
     if (compra.tipo !== "cuotas" || compra.pagada) return [];
     return buildCuotaSchedule(compra).filter(function (c) { return !c.paid; });
+  }
+
+  // Sin nada pendiente por cobrar: en cuotas, todas sus cuotas ya están
+  // pagadas (por el flag general o una por una); en pago único, el flag
+  // general. Estas se ocultan por defecto para no llenar la lista de ceros.
+  function compraEstaPagada(compra) {
+    if (compra.tipo === "cuotas") return cuotasPendientesDe(compra).length === 0;
+    return !!compra.pagada;
   }
 
   // Cuánto se le va a cobrar realmente a esta compra: si es en cuotas, la
@@ -122,12 +137,17 @@
   }
 
   function buildCalcItemRow(compra) {
+    var pagada = compraEstaPagada(compra);
+
     var row = document.createElement("div");
-    row.className = "compra-mini-row calc-item-row";
+    row.className = "compra-mini-row calc-item-row" + (pagada ? " compra-mini-pagada" : "");
 
     var checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = calcSeleccionadas.has(compra.id);
+    // Ya pagada = nada pendiente que cobrar: se muestra solo de referencia,
+    // no se puede marcar (evita sumar $0 a la selección sin darse cuenta).
+    checkbox.disabled = pagada;
     checkbox.addEventListener("change", function () {
       if (checkbox.checked) calcSeleccionadas.add(compra.id);
       else calcSeleccionadas.delete(compra.id);
@@ -141,7 +161,7 @@
     // cuotas corta la propagación de su propio click (más abajo) para no
     // pelearse con esto.
     row.addEventListener("click", function (e) {
-      if (e.target === checkbox) return;
+      if (pagada || e.target === checkbox) return;
       checkbox.checked = !checkbox.checked;
       checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     });
@@ -157,7 +177,7 @@
     metaEl.className = "compra-mini-meta";
     var metaTexto = formatDateDisplay(compra.fecha) + " · " + categoriaLabel(compra);
     if (calcMostrarTodas) metaTexto += " · Compró: " + compradorNombre(compra);
-    if (compra.pagada) metaTexto += " · Ya pagada";
+    if (pagada) metaTexto += " · Ya pagada";
     metaEl.textContent = metaTexto;
     info.appendChild(metaEl);
 
@@ -203,7 +223,9 @@
 
     row.appendChild(info);
 
-    valueEl.textContent = formatCurrency(montoACobrar(compra));
+    // Ya pagada: no tiene sentido mostrar "$0" pendiente — se muestra el
+    // monto real de la compra, para que se entienda cuánto fue en total.
+    valueEl.textContent = formatCurrency(pagada ? (Number(compra.monto) || 0) : montoACobrar(compra));
     row.appendChild(valueEl);
 
     return row;
@@ -288,12 +310,12 @@
   calcVerDesgloseInput.addEventListener("change", renderCalcDesglose);
 
   [calcFilterTexto].forEach(function (el) { el.addEventListener("input", renderCalcLista); });
-  [calcFechaDesdeInput, calcFechaHastaInput, calcSoloMarcadasInput].forEach(function (el) {
+  [calcFechaDesdeInput, calcFechaHastaInput, calcSoloMarcadasInput, calcMostrarPagadasInput].forEach(function (el) {
     el.addEventListener("change", renderCalcLista);
   });
 
   calcMarcarTodoBtn.addEventListener("click", function () {
-    comprasFiltradasCalc().forEach(function (c) { calcSeleccionadas.add(c.id); });
+    comprasFiltradasCalc().forEach(function (c) { if (!compraEstaPagada(c)) calcSeleccionadas.add(c.id); });
     renderCalcLista();
   });
 
@@ -429,6 +451,7 @@
     calcFechaDesdeInput.value = "";
     calcFechaHastaInput.value = "";
     calcSoloMarcadasInput.checked = false;
+    calcMostrarPagadasInput.checked = false;
     calcMostrarTodas = false;
     calcMostrarTodasBtn.classList.remove("btn-primary");
     calcMostrarTodasBtn.classList.add("btn-outline");

@@ -81,6 +81,13 @@
             <div class="compartida-box">
               <h3 class="compartida-titulo">🤝 Participantes de la compra</h3>
               <p class="lede-hint">Agrega a cada persona y cuánto le corresponde pagar. El total se calcula solo. Si tú pagaste una parte, agrégate también.</p>
+
+              <div class="field">
+                <label for="compra-compartida-acreedor">¿Quién puso la plata?</label>
+                <select id="compra-compartida-acreedor"></select>
+                <span class="label-hint" id="compra-compartida-acreedor-hint"></span>
+              </div>
+
               <div id="compra-participantes-list" class="participantes-list"></div>
               <button type="button" id="compra-participante-add-btn" class="btn btn-outline btn-small">➕ Agregar participante</button>
               <div class="compartida-total-row">
@@ -995,6 +1002,10 @@
             <label class="radio-option calc-solo-marcadas-option">
               <input type="checkbox" id="calc-solo-marcadas" />
               Ver solo las marcadas
+            </label>
+            <label class="radio-option calc-solo-marcadas-option">
+              <input type="checkbox" id="calc-mostrar-pagadas" />
+              Mostrar las ya pagadas
             </label>
           </div>
           <button type="button" id="calc-mostrar-todas-btn" class="btn btn-outline btn-small">Mostrar todas las compras</button>

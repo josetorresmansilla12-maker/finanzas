@@ -731,19 +731,26 @@
       info.appendChild(fechaAcordadaEl);
     }
 
-    if (contextoTarjeta && compra.pagada && !compra.aplicadoABanco) {
-      var pendienteBancoEl = document.createElement("label");
-      pendienteBancoEl.className = "compra-mini-meta aviso-pendiente-banco aviso-pendiente-banco-check";
-      var pendienteBancoCheck = document.createElement("input");
-      pendienteBancoCheck.type = "checkbox";
-      pendienteBancoCheck.addEventListener("change", function () {
-        if (pendienteBancoCheck.checked) marcarCompraAplicadaBanco(compra.id);
-      });
-      var pendienteBancoTexto = document.createElement("span");
-      pendienteBancoTexto.textContent = "💰 Dinero recibido, pero aún no abonado a la tarjeta — marcar como ya abonado";
-      pendienteBancoEl.appendChild(pendienteBancoCheck);
-      pendienteBancoEl.appendChild(pendienteBancoTexto);
-      info.appendChild(pendienteBancoEl);
+    if (contextoTarjeta && compra.pagada) {
+      if (compra.aplicadoABanco) {
+        var abonadoBadge = document.createElement("span");
+        abonadoBadge.className = "due-badge ok compra-mini-abonado-badge";
+        abonadoBadge.textContent = "✅ Dinero abonado y pagado en la tarjeta";
+        info.appendChild(abonadoBadge);
+      } else {
+        var pendienteBancoEl = document.createElement("label");
+        pendienteBancoEl.className = "compra-mini-meta aviso-pendiente-banco aviso-pendiente-banco-check";
+        var pendienteBancoCheck = document.createElement("input");
+        pendienteBancoCheck.type = "checkbox";
+        pendienteBancoCheck.addEventListener("change", function () {
+          if (pendienteBancoCheck.checked) marcarCompraAplicadaBanco(compra.id);
+        });
+        var pendienteBancoTexto = document.createElement("span");
+        pendienteBancoTexto.textContent = "💰 Dinero recibido, pero aún no abonado a la tarjeta — marcar como ya abonado";
+        pendienteBancoEl.appendChild(pendienteBancoCheck);
+        pendienteBancoEl.appendChild(pendienteBancoTexto);
+        info.appendChild(pendienteBancoEl);
+      }
     }
     row.appendChild(info);
 
@@ -1363,6 +1370,16 @@
     });
   }
 
+  // Abre y desplaza hasta el cuadro de deuda con esa clave (ver data-key en
+  // buildDeudaCard), para saltar directo desde el resumen de saldo neto sin
+  // tener que buscarlo a mano entre "Me deben" y "Lo que debo".
+  function irACuadroDeuda(claveCard) {
+    var card = document.querySelector('details.deuda-card[data-key="' + claveCard + '"]');
+    if (!card) return;
+    card.open = true;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   // ---------- Saldo neto por persona ----------
   //
   // Cruza ambas direcciones para no pagar de más: si papá te debe $35.000 y
@@ -1387,9 +1404,14 @@
 
       var izq = document.createElement("div");
       izq.className = "saldo-neto-info";
-      var nombre = document.createElement("span");
-      nombre.className = "saldo-neto-nombre";
+      var nombre = document.createElement("button");
+      nombre.type = "button";
+      nombre.className = "saldo-neto-nombre saldo-neto-nombre-btn";
       nombre.textContent = deudorNombre(f.key);
+      // Si me debe y le debo a la vez, prioriza el cuadro del lado que pesa
+      // más (el mismo que decide el signo del neto de arriba).
+      var claveCard = (f.neto >= 0 ? "me_deben::" : "deuda_mia::") + f.key;
+      nombre.addEventListener("click", function () { irACuadroDeuda(claveCard); });
       izq.appendChild(nombre);
       var detalle = document.createElement("span");
       detalle.className = "saldo-neto-detalle";

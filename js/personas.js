@@ -67,6 +67,19 @@
     fillSelectOptions(document.getElementById("compra-comprador"), compradores);
     fillSelectOptions(document.getElementById("compra-acreedor"), acreedores);
 
+    // Para una compra compartida, además de "yo puse la plata" (lo de
+    // siempre) o "nadie" (cada uno ya pagó lo suyo), cualquier persona
+    // registrada puede haber puesto la plata por todo el grupo — en ese
+    // caso cada participante, incluido tú si participas, queda debiéndole
+    // su parte a esa persona.
+    fillSelectOptions(document.getElementById("compra-compartida-acreedor"),
+      [
+        { value: "yo", label: "Yo (cada participante me debe su parte)" },
+        { value: "nadie", label: "Nadie — cada uno ya pagó lo suyo" }
+      ].concat(loadMiembros().map(function (p) {
+        return { value: p.id, label: p.nombre + " puso la plata (todos le deben, incluido tú si participas)" };
+      })));
+
     fillSelectOptions(document.getElementById("tarjeta-owner"),
       [{ value: "mia", label: "Mía" }].concat(loadMiembros().map(function (p) {
         return { value: p.id, label: "De " + p.nombre };
