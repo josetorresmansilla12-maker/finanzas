@@ -184,6 +184,17 @@
     return total;
   }
 
+  // Total marcado como "ya abonado a la tarjeta" vía el checklist de compras
+  // (individual o desde un abono manual con compras seleccionadas). No se
+  // limita al ciclo abierto: cuenta también compras de ciclos ya archivados,
+  // para que sea un acumulado y no se resetee al cerrar un estado de cuenta.
+  function totalAplicadoABancoPorCompras() {
+    var misIds = misTarjetas().map(function (t) { return t.id; });
+    return loadCompras()
+      .filter(function (c) { return c.aplicadoABanco && misIds.indexOf(c.tarjetaId) !== -1; })
+      .reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+  }
+
   function balanceDe(compras, abonos) {
     var generado = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
     var recibido = abonos.reduce(function (sum, a) { return sum + (Number(a.amount) || 0); }, 0);
@@ -495,8 +506,63 @@
     }).reduce(function (sum, a) { return sum + montoPendienteDeAplicarDeAbono(a); }, 0);
   }
 
-  function addTarjetaAbonoManual(tarjetaId, amount, date, note) {
-    addAbono("tarjeta", null, amount, date, note, { tarjetaId: tarjetaId });
+  // Mutación pura EN MEMORIA (no guarda): descuenta `monto` del cupo de
+  // reembolsos "me_deben" de esta tarjeta que todavía tengan saldo sin
+  // aplicar, dentro del array de abonos ya cargado. Devuelve los ids de los
+  // abonos de los que salió, para anotarlos como "origenReembolsos" en el
+  // abono de tarjeta que los consume (así se puede deshacer si alguno de
+  // ellos se elimina después). No guarda para poder combinarse con el push
+  // de ese abono en un solo saveAbonos — y un solo paso de "Deshacer".
+  function consumirPendienteAplicarBancoEnMemoria(abonos, tarjetaId, monto) {
+    var restante = monto;
+    var origenes = [];
+    abonos.forEach(function (a) {
+      if (restante <= 0) return;
+      if (a.tipo !== "me_deben" || a.aplicarATarjetaId !== tarjetaId) return;
+      var pend = montoPendienteDeAplicarDeAbono(a);
+      if (pend <= 0) return;
+      var tomar = Math.min(pend, restante);
+      a.aplicadoAlBancoMonto = montoAplicadoDeAbono(a) + tomar;
+      a.aplicadoAlBanco = montoPendienteDeAplicarDeAbono(a) <= 0;
+      origenes.push(a.id);
+      restante -= tomar;
+    });
+    return origenes;
+  }
+
+  // Abono manual a la tarjeta que, opcionalmente, indica a qué compras
+  // corresponde: esas compras quedan marcadas "ya abonadas a la tarjeta"
+  // (para que dejen de pedir aplicación individual) y, si alguna tenía un
+  // reembolso de terceros pendiente de aplicar, también se descuenta del
+  // mismo cupo compartido que usa el checklist individual — así los dos
+  // caminos no se pisan. Todo en un solo guardado + render, para no
+  // duplicar el toast/refresh.
+  function addTarjetaAbonoManualConCompras(tarjetaId, amount, date, note, compraIds) {
+    var compras = loadCompras();
+    var seleccionadas = (compraIds || [])
+      .map(function (id) { return compras.find(function (c) { return c.id === id; }); })
+      .filter(Boolean);
+
+    var abonos = loadAbonos();
+    var origenes = [];
+    seleccionadas.forEach(function (c) {
+      origenes = origenes.concat(consumirPendienteAplicarBancoEnMemoria(abonos, tarjetaId, Number(c.monto) || 0));
+    });
+
+    abonos.push({
+      id: uid(), tipo: "tarjeta", tarjetaId: tarjetaId, amount: amount, date: date,
+      note: note || null, createdAt: Date.now(),
+      origenReembolsos: origenes
+    });
+    if (!saveAbonos(abonos)) return;
+
+    if (seleccionadas.length > 0) {
+      seleccionadas.forEach(function (c) { c.aplicadoABanco = true; });
+      saveCompras(compras);
+    }
+
+    renderAll();
+    showToast("Abono a la tarjeta registrado.");
   }
 
   // Cerrar el mes: registra lo que falte por pagar y archiva el periodo
@@ -528,6 +594,25 @@
     });
   }
 
+  // Mutación real de "aplicar reembolsos al banco": reparte `monto` entre los
+  // abonos "me_deben" de esta tarjeta que todavía tengan saldo sin aplicar
+  // (los que van quedando primero en la lista), y registra un abono de tipo
+  // "tarjeta" por ese monto. Separada de aplicarReembolsosABanco para poder
+  // reusarla sin su modal de confirmación (ej. al marcar una compra puntual
+  // como abonada, que no necesita preguntar dos veces).
+  function ejecutarAplicarReembolsosABanco(tarjetaId, monto, note) {
+    var abonos = loadAbonos();
+    var origenes = consumirPendienteAplicarBancoEnMemoria(abonos, tarjetaId, monto);
+    abonos.push({
+      id: uid(), tipo: "tarjeta", tarjetaId: tarjetaId, amount: monto, date: todayStamp(),
+      note: note || "Reembolsos de terceros aplicados al pago del banco", createdAt: Date.now(),
+      // Queda anotado de qué reembolsos salió, para poder deshacerlo si
+      // alguno de ellos se elimina después.
+      origenReembolsos: origenes
+    });
+    return saveAbonos(abonos);
+  }
+
   // "montoSolicitado" permite aplicar solo una parte de lo recibido (ej.
   // recibiste $300.000 entre varias personas pero hoy solo alcanzaste a
   // abonar $200.000 al banco): el resto queda pendiente de aplicar para
@@ -550,32 +635,34 @@
         tarjetaLabel(tarjetaId) + ". El resto queda pendiente de aplicar más adelante.";
 
     pedirConfirmacionPago(detalle, function () {
-      var abonos = loadAbonos();
-      var restante = monto;
-      var origenes = [];
-      abonos.forEach(function (a) {
-        if (restante <= 0) return;
-        if (a.tipo !== "me_deben" || a.aplicarATarjetaId !== tarjetaId) return;
-        var pend = montoPendienteDeAplicarDeAbono(a);
-        if (pend <= 0) return;
-        var tomar = Math.min(pend, restante);
-        a.aplicadoAlBancoMonto = montoAplicadoDeAbono(a) + tomar;
-        a.aplicadoAlBanco = montoPendienteDeAplicarDeAbono(a) <= 0;
-        origenes.push(a.id);
-        restante -= tomar;
-      });
-      abonos.push({
-        id: uid(), tipo: "tarjeta", tarjetaId: tarjetaId, amount: monto, date: todayStamp(),
-        note: "Reembolsos de terceros aplicados al pago del banco", createdAt: Date.now(),
-        // Queda anotado de qué reembolsos salió, para poder deshacerlo si
-        // alguno de ellos se elimina después.
-        origenReembolsos: origenes
-      });
-      if (saveAbonos(abonos)) {
+      if (ejecutarAplicarReembolsosABanco(tarjetaId, monto)) {
         renderAll();
         showToast(formatCurrency(monto) + " aplicados al pago de la tarjeta.");
       }
     });
+  }
+
+  // Checklist independiente de compra.pagada: esa etiqueta solo dice que la
+  // persona (o tú mismo) ya juntó el dinero, no que ese dinero ya llegó al
+  // banco. Marcar una compra acá la saca de "dinero recibido, pendiente de
+  // abonar" y, si ese dinero venía de un reembolso de terceros pendiente de
+  // aplicar, también lo descuenta del mismo cupo compartido que usa el aviso
+  // agregado — así una compra no se puede "aplicar" dos veces por caminos
+  // distintos sin que el cupo compartido se entere.
+  function marcarCompraAplicadaBanco(compraId) {
+    var compras = loadCompras();
+    var compra = compras.find(function (c) { return c.id === compraId; });
+    if (!compra || compra.aplicadoABanco) return;
+
+    var monto = Number(compra.monto) || 0;
+    compra.aplicadoABanco = true;
+    if (!saveCompras(compras)) return;
+
+    if (monto > 0 && compra.tarjetaId && esTarjetaPersonal(compra.tarjetaId)) {
+      ejecutarAplicarReembolsosABanco(compra.tarjetaId, monto, "Abono de: " + compraDisplayName(compra));
+    }
+    renderAll();
+    showToast("Compra marcada como abonada a la tarjeta.");
   }
 
   // ---------- Bloques compartidos ----------
@@ -644,10 +731,18 @@
       info.appendChild(fechaAcordadaEl);
     }
 
-    if (contextoTarjeta && compra.pagada) {
-      var pendienteBancoEl = document.createElement("span");
-      pendienteBancoEl.className = "compra-mini-meta aviso-pendiente-banco";
-      pendienteBancoEl.textContent = "💰 Dinero recibido, pero aún no abonado a la tarjeta";
+    if (contextoTarjeta && compra.pagada && !compra.aplicadoABanco) {
+      var pendienteBancoEl = document.createElement("label");
+      pendienteBancoEl.className = "compra-mini-meta aviso-pendiente-banco aviso-pendiente-banco-check";
+      var pendienteBancoCheck = document.createElement("input");
+      pendienteBancoCheck.type = "checkbox";
+      pendienteBancoCheck.addEventListener("change", function () {
+        if (pendienteBancoCheck.checked) marcarCompraAplicadaBanco(compra.id);
+      });
+      var pendienteBancoTexto = document.createElement("span");
+      pendienteBancoTexto.textContent = "💰 Dinero recibido, pero aún no abonado a la tarjeta — marcar como ya abonado";
+      pendienteBancoEl.appendChild(pendienteBancoCheck);
+      pendienteBancoEl.appendChild(pendienteBancoTexto);
       info.appendChild(pendienteBancoEl);
     }
     row.appendChild(info);
@@ -801,6 +896,131 @@
     wrap.appendChild(dateInput);
     wrap.appendChild(noteInput);
     wrap.appendChild(saveBtn);
+    return wrap;
+  }
+
+  // Abono manual a una tarjeta, con la opción de indicar a qué compras
+  // corresponde (candidatas: las del ciclo abierto ya marcadas "dinero
+  // recibido" pero todavía sin abonar). Si el monto no calza con lo
+  // seleccionado, avisa la diferencia y pide confirmar antes de guardar —
+  // nunca bloquea, porque puede haber razones válidas para que no calce
+  // (comisiones, redondeos, etc.).
+  function buildTarjetaAbonoManualForm(tarjeta) {
+    var wrap = document.createElement("div");
+    wrap.className = "deuda-payment-form hidden";
+
+    var amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.min = "0";
+    amountInput.step = "1";
+    amountInput.placeholder = "Monto";
+    amountInput.className = "deuda-payment-amount";
+
+    var dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.value = todayStamp();
+    dateInput.className = "deuda-payment-date";
+
+    var noteInput = document.createElement("input");
+    noteInput.type = "text";
+    noteInput.placeholder = "Nota (opcional)";
+    noteInput.className = "deuda-payment-note";
+
+    wrap.appendChild(amountInput);
+    wrap.appendChild(dateInput);
+    wrap.appendChild(noteInput);
+
+    var candidatas = comprasForTarjeta(tarjeta.id).filter(function (c) { return c.pagada && !c.aplicadoABanco; });
+    var checks = [];
+    var diffHint = document.createElement("p");
+    diffHint.className = "deuda-payment-diff-hint hidden";
+
+    function actualizarDiff() {
+      var seleccionadas = checks.filter(function (ch) { return ch.input.checked; });
+      if (seleccionadas.length === 0 || !amountInput.value) {
+        diffHint.classList.add("hidden");
+        return;
+      }
+      var totalSeleccionado = seleccionadas.reduce(function (sum, ch) { return sum + (Number(ch.compra.monto) || 0); }, 0);
+      var diff = (Number(amountInput.value) || 0) - totalSeleccionado;
+      if (Math.abs(diff) < 1) {
+        diffHint.classList.add("hidden");
+        return;
+      }
+      diffHint.classList.remove("hidden");
+      diffHint.textContent = diff > 0
+        ? "⚠️ El monto supera en " + formatCurrency(diff) + " a lo seleccionado (" + formatCurrency(totalSeleccionado) + ")."
+        : "⚠️ Faltan " + formatCurrency(-diff) + " para cubrir lo seleccionado (" + formatCurrency(totalSeleccionado) + ").";
+    }
+
+    if (candidatas.length > 0) {
+      var picker = document.createElement("div");
+      picker.className = "abono-compras-picker";
+      var pickerTitle = document.createElement("div");
+      pickerTitle.className = "abono-compras-picker-title";
+      pickerTitle.textContent = "¿A qué compras corresponde? (opcional)";
+      picker.appendChild(pickerTitle);
+
+      candidatas.forEach(function (c) {
+        var label = document.createElement("label");
+        label.className = "abono-compra-check";
+        var checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = c.id;
+        checkbox.addEventListener("change", actualizarDiff);
+        var texto = document.createElement("span");
+        texto.textContent = compraDisplayName(c) + " — " + formatCurrency(c.monto);
+        label.appendChild(checkbox);
+        label.appendChild(texto);
+        picker.appendChild(label);
+        checks.push({ compra: c, input: checkbox });
+      });
+
+      wrap.appendChild(picker);
+      wrap.appendChild(diffHint);
+      amountInput.addEventListener("input", actualizarDiff);
+    }
+
+    var saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "btn btn-primary btn-small";
+    saveBtn.textContent = "Guardar";
+    saveBtn.addEventListener("click", function () {
+      var amount = Number(amountInput.value);
+      if (!amount || amount <= 0) {
+        showToast("Ingresa un monto válido.");
+        return;
+      }
+      if (!dateInput.value) {
+        showToast("Selecciona una fecha.");
+        return;
+      }
+
+      var seleccionadas = checks.filter(function (ch) { return ch.input.checked; }).map(function (ch) { return ch.compra; });
+      var guardar = function () {
+        addTarjetaAbonoManualConCompras(tarjeta.id, amount, dateInput.value, noteInput.value.trim(),
+          seleccionadas.map(function (c) { return c.id; }));
+      };
+
+      if (seleccionadas.length === 0) {
+        guardar();
+        return;
+      }
+
+      var totalSeleccionado = seleccionadas.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+      var diff = amount - totalSeleccionado;
+      if (Math.abs(diff) < 1) {
+        guardar();
+        return;
+      }
+
+      var detalle = diff > 0
+        ? "El monto (" + formatCurrency(amount) + ") supera en " + formatCurrency(diff) + " a la suma de las compras seleccionadas (" + formatCurrency(totalSeleccionado) + ")."
+        : "Faltan " + formatCurrency(-diff) + " para cubrir la suma de las compras seleccionadas (" + formatCurrency(totalSeleccionado) + ") con el monto ingresado (" + formatCurrency(amount) + ").";
+      pedirConfirmacionPago(detalle + " ¿Registrar el abono de todas formas?", guardar);
+    });
+    wrap.appendChild(saveBtn);
+
     return wrap;
   }
 
@@ -1378,9 +1598,7 @@
     pagadaBtn.addEventListener("click", function () { markTarjetaPagada(tarjeta.id); });
     actions.appendChild(pagadaBtn);
 
-    var abonoForm = buildInlinePaymentForm(function (amount, date, note) {
-      addTarjetaAbonoManual(tarjeta.id, amount, date, note);
-    });
+    var abonoForm = buildTarjetaAbonoManualForm(tarjeta);
 
     var abonoBtn = document.createElement("button");
     abonoBtn.type = "button";

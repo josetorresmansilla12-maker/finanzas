@@ -2039,6 +2039,44 @@ polyline.trend-line {
   font-weight: 600;
 }
 
+.aviso-pendiente-banco-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* ---------- Selector de compras dentro del abono manual a la tarjeta ---------- */
+.abono-compras-picker {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.abono-compras-picker-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.abono-compra-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.deuda-payment-diff-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-warning);
+}
+
 /* ---------- Tarjetas de estadística clicables (resaltar compras) ---------- */
 .card-clickable {
   border: none;
