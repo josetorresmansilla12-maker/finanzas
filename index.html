@@ -36,6 +36,7 @@
     <button type="button" class="tab-btn" id="tab-informes-btn" data-tab="informes">Informes</button>
     <button type="button" class="tab-btn" id="tab-calculadora-btn" data-tab="calculadora">Calculadora</button>
     <button type="button" class="tab-btn" id="tab-juntas-btn" data-tab="juntas">Juntas</button>
+    <button type="button" class="tab-btn" id="tab-vercompras-btn" data-tab="vercompras">Ver Compras</button>
   </nav>
 
   <main class="container">
@@ -1130,6 +1131,44 @@
         <div id="juntas-lista"></div>
       </section>
     </section>
+
+    <!-- ===================== TAB: VER COMPRAS ===================== -->
+    <section id="tab-vercompras" class="tab-panel hidden">
+      <section class="form-section">
+        <div class="field">
+          <label for="vercompras-persona">¿De quién quieres ver las compras?</label>
+          <select id="vercompras-persona"></select>
+        </div>
+        <p class="lede-hint">Incluye todo lo que esa persona compró, sea gasto del hogar, personal, compartido o con deuda de por medio — ordenado mes a mes.</p>
+      </section>
+
+      <section class="summary-cards" id="vercompras-summary-cards">
+        <div class="card">
+          <span class="card-label">Total gastado</span>
+          <span class="card-value" id="vercompras-total">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Compras registradas</span>
+          <span class="card-value" id="vercompras-cantidad">0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Promedio por mes</span>
+          <span class="card-value" id="vercompras-promedio">$0</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Categoría con más gasto</span>
+          <span class="card-value" id="vercompras-top-categoria">—</span>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🗓️ Compras mes a mes</h2>
+        </div>
+        <p id="vercompras-empty" class="empty-state hidden">Esta persona no tiene compras registradas.</p>
+        <div id="vercompras-lista"></div>
+      </section>
+    </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
@@ -1224,6 +1263,7 @@
   <script src="js/informes.js"></script>
   <script src="js/calculadora.js"></script>
   <script src="js/juntas.js"></script>
+  <script src="js/vercompras.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/sync.js"></script>

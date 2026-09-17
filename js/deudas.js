@@ -1049,6 +1049,40 @@
     return grupos;
   }
 
+  // Pinta una lista de compras dentro de `container`, agrupando por
+  // comprador con su propio subtotal cuando hay más de uno (ver comentario
+  // de agruparComprasPorComprador). Reusado tanto para las compras activas
+  // como para las ya pagadas, cuando se muestran por separado.
+  function renderComprasEnContenedor(container, compras) {
+    container.innerHTML = "";
+    var renderCompraItem = function (c) {
+      container.appendChild(c.tipo === "cuotas" ? buildCuotaBlock(c) : buildCompraMiniRow(c, { conBotonPagada: true }));
+    };
+    var grupos = agruparComprasPorComprador(compras);
+    if (grupos.length > 1) {
+      grupos.forEach(function (grupo, i) {
+        var totalGrupo = grupo.compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+        var pendienteGrupo = grupo.compras.reduce(function (sum, c) { return sum + Math.max(0, (Number(c.monto) || 0) - compraCubierta(c)); }, 0);
+
+        var grupoHead = document.createElement("div");
+        grupoHead.className = "compra-grupo-head" + (i === 0 ? " compra-grupo-head-first" : "");
+        var grupoNombre = document.createElement("span");
+        grupoNombre.textContent = "🧑 Compró: " + grupo.nombre;
+        var grupoMonto = document.createElement("span");
+        grupoMonto.textContent = pendienteGrupo > 0
+          ? "Pendiente " + formatCurrency(pendienteGrupo) + " de " + formatCurrency(totalGrupo)
+          : formatCurrency(totalGrupo) + " (al día)";
+        grupoHead.appendChild(grupoNombre);
+        grupoHead.appendChild(grupoMonto);
+        container.appendChild(grupoHead);
+
+        grupo.compras.forEach(renderCompraItem);
+      });
+    } else {
+      compras.forEach(renderCompraItem);
+    }
+  }
+
   // ---------- Tarjeta de deuda (formato unificado para ambas vistas) ----------
   //
   // Plegada por defecto: solo el nombre y las dos cifras que importan (lo
@@ -1154,43 +1188,63 @@
 
     var compras = config.compras.slice().sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
     if (compras.length > 0) {
+      var comprasHeader = document.createElement("div");
+      comprasHeader.className = "cuota-subtitle-row";
       var comprasTitle = document.createElement("div");
       comprasTitle.className = "cuota-subtitle";
       comprasTitle.textContent = "Compras que componen esta deuda";
-      body.appendChild(comprasTitle);
+      comprasHeader.appendChild(comprasTitle);
 
-      var renderCompraItem = function (c) {
-        body.appendChild(c.tipo === "cuotas" ? buildCuotaBlock(c) : buildCompraMiniRow(c, { conBotonPagada: true }));
+      // Las ya pagadas se guardan aparte, plegadas, para no llenar la vista
+      // de compras que ya no hay que revisar — pero a veces conviene verlo
+      // todo junto y ordenado por fecha para encontrar algo puntual.
+      var hayPagadas = compras.some(function (c) { return c.pagada; });
+      var fusionarInput = null;
+      if (hayPagadas) {
+        var fusionarLabel = document.createElement("label");
+        fusionarLabel.className = "compras-fusionar-toggle";
+        fusionarInput = document.createElement("input");
+        fusionarInput.type = "checkbox";
+        var fusionarTexto = document.createElement("span");
+        fusionarTexto.textContent = "Ver todo junto (para buscar)";
+        fusionarLabel.appendChild(fusionarInput);
+        fusionarLabel.appendChild(fusionarTexto);
+        comprasHeader.appendChild(fusionarLabel);
+      }
+      body.appendChild(comprasHeader);
+
+      var comprasActivasEl = document.createElement("div");
+      body.appendChild(comprasActivasEl);
+
+      var pagadasBox = null;
+      var pagadasSummary = null;
+      var pagadasContenidoEl = null;
+      if (hayPagadas) {
+        pagadasBox = document.createElement("details");
+        pagadasBox.className = "compras-pagadas-box";
+        pagadasSummary = document.createElement("summary");
+        pagadasBox.appendChild(pagadasSummary);
+        pagadasContenidoEl = document.createElement("div");
+        pagadasBox.appendChild(pagadasContenidoEl);
+        body.appendChild(pagadasBox);
+      }
+
+      var renderComprasSeccion = function () {
+        if (!hayPagadas || fusionarInput.checked) {
+          renderComprasEnContenedor(comprasActivasEl, compras);
+          if (pagadasBox) pagadasBox.classList.add("hidden");
+          return;
+        }
+        var pendientes = compras.filter(function (c) { return !c.pagada; });
+        var pagadas = compras.filter(function (c) { return c.pagada; });
+        renderComprasEnContenedor(comprasActivasEl, pendientes);
+        pagadasBox.classList.remove("hidden");
+        pagadasSummary.textContent = "✓ Compras ya pagadas (" + pagadas.length + ")";
+        renderComprasEnContenedor(pagadasContenidoEl, pagadas);
       };
 
-      // Una misma deuda puede mezclar compras de más de un comprador (ej. a
-      // veces compra Colun con su tarjeta y a veces compro yo directamente,
-      // pero ambas cosas terminan debiéndosele a mamá): en ese caso se
-      // agrupan por comprador con su propio subtotal, para distinguir con
-      // claridad cada flujo de plata aunque el pago final sea uno solo.
-      var grupos = agruparComprasPorComprador(compras);
-      if (grupos.length > 1) {
-        grupos.forEach(function (grupo, i) {
-          var totalGrupo = grupo.compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-          var pendienteGrupo = grupo.compras.reduce(function (sum, c) { return sum + Math.max(0, (Number(c.monto) || 0) - compraCubierta(c)); }, 0);
-
-          var grupoHead = document.createElement("div");
-          grupoHead.className = "compra-grupo-head" + (i === 0 ? " compra-grupo-head-first" : "");
-          var grupoNombre = document.createElement("span");
-          grupoNombre.textContent = "🧑 Compró: " + grupo.nombre;
-          var grupoMonto = document.createElement("span");
-          grupoMonto.textContent = pendienteGrupo > 0
-            ? "Pendiente " + formatCurrency(pendienteGrupo) + " de " + formatCurrency(totalGrupo)
-            : formatCurrency(totalGrupo) + " (al día)";
-          grupoHead.appendChild(grupoNombre);
-          grupoHead.appendChild(grupoMonto);
-          body.appendChild(grupoHead);
-
-          grupo.compras.forEach(renderCompraItem);
-        });
-      } else {
-        compras.forEach(renderCompraItem);
-      }
+      if (fusionarInput) fusionarInput.addEventListener("change", renderComprasSeccion);
+      renderComprasSeccion();
     }
 
     var abonos = config.abonos.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });

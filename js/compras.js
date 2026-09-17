@@ -490,6 +490,11 @@
     otroInput.type = "text";
     otroInput.className = "participante-otro-nombre hidden";
     otroInput.placeholder = "Nombre de la persona";
+    // Mismo autocompletado que "¿Quién me debe?"/"¿Quién?": sugiere nombres
+    // ya usados antes, para escribir siempre igual y que la deuda de esa
+    // persona quede junta en un solo cuadro, en vez de partirse en varios
+    // por pequeñas diferencias de cómo se escribió el nombre.
+    otroInput.setAttribute("list", "personas-conocidas-list");
     row.appendChild(otroInput);
 
     var montoInput = document.createElement("input");

@@ -11,6 +11,7 @@
   var tabInformesBtn = document.getElementById("tab-informes-btn");
   var tabCalculadoraBtn = document.getElementById("tab-calculadora-btn");
   var tabJuntasBtn = document.getElementById("tab-juntas-btn");
+  var tabVerComprasBtn = document.getElementById("tab-vercompras-btn");
 
   var tabComprasPanel = document.getElementById("tab-compras");
   var tabDeudasPanel = document.getElementById("tab-deudas");
@@ -21,6 +22,7 @@
   var tabInformesPanel = document.getElementById("tab-informes");
   var tabCalculadoraPanel = document.getElementById("tab-calculadora");
   var tabJuntasPanel = document.getElementById("tab-juntas");
+  var tabVerComprasPanel = document.getElementById("tab-vercompras");
 
   function showTabPanels(tab) {
     tabComprasPanel.classList.toggle("hidden", tab !== "compras");
@@ -32,6 +34,7 @@
     tabInformesPanel.classList.toggle("hidden", tab !== "informes");
     tabCalculadoraPanel.classList.toggle("hidden", tab !== "calculadora");
     tabJuntasPanel.classList.toggle("hidden", tab !== "juntas");
+    tabVerComprasPanel.classList.toggle("hidden", tab !== "vercompras");
   }
 
   function activateTab(tab) {
@@ -44,6 +47,7 @@
     tabInformesBtn.classList.toggle("active", tab === "informes");
     tabCalculadoraBtn.classList.toggle("active", tab === "calculadora");
     tabJuntasBtn.classList.toggle("active", tab === "juntas");
+    tabVerComprasBtn.classList.toggle("active", tab === "vercompras");
     showTabPanels(tab);
 
     if (tab === "deudas") renderDeudas();
@@ -53,6 +57,7 @@
     if (tab === "informes") renderInformesFiltros();
     if (tab === "calculadora") renderCalculadoraFiltros();
     if (tab === "juntas") renderJuntasLista();
+    if (tab === "vercompras") renderVerComprasFiltros();
   }
 
   tabComprasBtn.addEventListener("click", function () { activateTab("compras"); });
@@ -64,3 +69,4 @@
   tabInformesBtn.addEventListener("click", function () { activateTab("informes"); });
   tabCalculadoraBtn.addEventListener("click", function () { activateTab("calculadora"); });
   tabJuntasBtn.addEventListener("click", function () { activateTab("juntas"); });
+  tabVerComprasBtn.addEventListener("click", function () { activateTab("vercompras"); });
