@@ -3,7 +3,7 @@
 // muestra la versión más nueva cuando hay internet, y el caché solo se usa
 // si el teléfono está sin conexión.
 
-var CACHE_NAME = "finanzas-cache-v35";
+var CACHE_NAME = "finanzas-cache-v36";
 var CORE_ASSETS = [
   "./",
   "./index.html",
@@ -21,11 +21,13 @@ var CORE_ASSETS = [
   "./js/tarjetas.js",
   "./js/compras.js",
   "./js/deudas.js",
+  "./js/deudatarjetas.js",
   "./js/sueldo.js",
   "./js/estadisticas.js",
   "./js/informes.js",
   "./js/calculadora.js",
   "./js/juntas.js",
+  "./js/pdf.js",
   "./js/vercompras.js",
   "./js/alerts.js",
   "./js/backup.js",

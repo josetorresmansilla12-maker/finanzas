@@ -327,7 +327,10 @@
     juntaResultadoEl.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  juntaImprimirBtn.addEventListener("click", function () { window.print(); });
+  juntaImprimirBtn.addEventListener("click", function () {
+    var titulo = juntaResultadoEl.querySelector("h2");
+    descargarPdfDe(juntaResultadoEl, "Junta_" + (titulo ? titulo.textContent : ""), juntaImprimirBtn);
+  });
 
   // ---------- Formulario: crear / editar ----------
 

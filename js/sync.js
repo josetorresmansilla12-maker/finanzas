@@ -44,6 +44,9 @@
   var syncDisconnectBtn = document.getElementById("sync-disconnect-btn");
   var syncEstadoEl = document.getElementById("sync-estado");
   var syncHintEl = document.getElementById("sync-hint");
+  var syncCodeVerBtn = document.getElementById("sync-code-ver-btn");
+  var syncChipBtn = document.getElementById("sync-chip-btn");
+  var ultimaSyncTs = null; // última vez que se envió o recibió algo de la nube
 
   var db = null;
   var ref = null;
@@ -154,14 +157,46 @@
     renderSyncEstado();
   }
 
+  function horaCorta(ts) {
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
   function renderSyncEstado() {
     if (!syncEstadoEl) return;
-    syncEstadoEl.textContent = (connected ? "🟢 " : "") + estadoTexto;
+    var ultima = connected && ultimaSyncTs ? " Última sincronización: " + horaCorta(ultimaSyncTs) + "." : "";
+    syncEstadoEl.textContent = (connected ? "🟢 " : "⚪ ") + estadoTexto + ultima;
     syncEstadoEl.className = "respaldo-estado" + (estadoClase ? " " + estadoClase : "");
     syncConnectBtn.classList.toggle("hidden", connected);
     syncDisconnectBtn.classList.toggle("hidden", !connected);
     syncConfigInput.disabled = connected;
     syncCodeInput.disabled = connected;
+
+    // Indicador siempre visible en el encabezado, para no tener que entrar
+    // a Configuración para saber si los dos equipos están enlazados.
+    if (syncChipBtn) {
+      syncChipBtn.textContent = connected
+        ? (estadoClase === "aviso" ? "☁️ Revisar sincronización" : "☁️ Sincronizado")
+        : "☁️ Sin sincronizar";
+      syncChipBtn.classList.toggle("sync-chip-ok", connected && estadoClase !== "aviso");
+      syncChipBtn.classList.toggle("sync-chip-aviso", !connected || estadoClase === "aviso");
+    }
+  }
+
+  if (syncChipBtn) {
+    syncChipBtn.addEventListener("click", function () {
+      activateTab("tarjetas");
+      var section = document.getElementById("sync-section");
+      if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  if (syncCodeVerBtn) {
+    syncCodeVerBtn.addEventListener("click", function () {
+      var oculto = syncCodeInput.type === "password";
+      syncCodeInput.type = oculto ? "text" : "password";
+      syncCodeVerBtn.textContent = oculto ? "Ocultar" : "Mostrar";
+    });
   }
 
   // ---------- Aplicar cambios que llegan de la nube ----------
@@ -185,7 +220,7 @@
     if (huella === lastSyncedSnapshot) return; // nada nuevo
     lastSyncedSnapshot = huella;
     ref.set({ data: snap, device: getDeviceId(), updatedAt: Date.now() })
-      .then(function () { setEstado("Al día. Guardado en la nube.", "ok"); })
+      .then(function () { ultimaSyncTs = Date.now(); setEstado("Al día. Guardado en la nube.", "ok"); })
       .catch(function (e) {
         console.error("Error al sincronizar:", e);
         setEstado("No se pudo guardar en la nube. Revisa tu conexión.", "aviso");
@@ -222,9 +257,11 @@
           return;
         }
         var huellaRemota = snapshotHuella(val.data);
-        if (huellaRemota === lastSyncedSnapshot) return;   // ya lo tenemos
+        ultimaSyncTs = Date.now();
+        if (huellaRemota === lastSyncedSnapshot) { renderSyncEstado(); return; } // ya lo tenemos
         if (val.device === getDeviceId()) {                // es nuestro propio envío
           lastSyncedSnapshot = huellaRemota;
+          renderSyncEstado();
           return;
         }
         adoptarRemoto(val.data);

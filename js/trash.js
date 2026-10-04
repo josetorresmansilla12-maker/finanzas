@@ -94,6 +94,9 @@
         // también el abono de la tarjeta: si no, la deuda de la tarjeta
         // quedaría más baja de lo que realmente es.
         abonos = descontarDeAbonoDeBanco(abonos, removedAbono);
+        // Y al revés: si es un abono a la tarjeta hecho con plata de
+        // reembolsos, esa plata vuelve a quedar "recibida, por abonar".
+        if (removedAbono.tipo === "tarjeta") revertirOrigenesDeAbonoTarjeta(abonos, removedAbono);
         saveAbonos(abonos);
       }
     } else if (pendingDelete.type === "sueldo") {

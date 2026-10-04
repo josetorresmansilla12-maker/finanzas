@@ -76,7 +76,7 @@ body {
 }
 
 .tabs {
-  max-width: 900px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 16px 16px 0;
   display: flex;
@@ -101,8 +101,10 @@ body {
   border-bottom-color: var(--color-primary);
 }
 
+/* Más ancho en computador: las tablas de compras (9 columnas) caben sin
+   barra horizontal. En el teléfono manda el ancho de la pantalla. */
 .container {
-  max-width: 900px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 24px 16px 60px;
 }
@@ -166,6 +168,7 @@ body {
 
 #tarjeta-form,
 #compra-form,
+#junta-form,
 #abono-mama-form {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1113,7 +1116,7 @@ polyline.trend-line {
 /* ---------- Avisos ---------- */
 
 .app-alerts {
-  max-width: 900px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 0 16px;
   display: flex;
@@ -1164,6 +1167,7 @@ polyline.trend-line {
 @media (max-width: 640px) {
   #tarjeta-form,
   #compra-form,
+  #junta-form,
   #sueldo-form {
     grid-template-columns: 1fr;
   }
@@ -2543,6 +2547,22 @@ tr.compartida-detalle-row .compra-mini-row {
   margin-top: 1px;
 }
 
+/* El detalle ocupa todo el espacio libre: así queda pegado al checkbox y
+   alineado a la izquierda en todas las filas (antes flotaba al centro y
+   cada fila quedaba corrida según el largo de su texto). */
+.calc-item-row .compra-mini-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.calc-item-row {
+  justify-content: flex-start;
+}
+
+.calc-item-row .compra-mini-desc {
+  font-size: 1rem;
+}
+
 .calc-solo-marcadas-option {
   padding: 8px 14px;
 }
@@ -2635,6 +2655,8 @@ tr.compartida-detalle-row .compra-mini-row {
   .app-header,
   .app-alerts,
   .tabs,
+  .modo-switch,
+  .minimizar-toolbar,
   .informe-filtros-section,
   .informe-resultado-section > .table-header,
   .calculadora-filtros-section,
@@ -2718,5 +2740,1029 @@ tr.compartida-detalle-row .compra-mini-row {
   .informe-report-header {
     margin-bottom: 14px;
     padding-bottom: 10px;
+  }
+}
+
+/* =========================================================
+   Ronda G — Configuración, Compras, Deudas, Deuda Tarjetas, Calculadora
+   ========================================================= */
+
+/* ---------- Encabezado: estado de la sincronización ---------- */
+.sync-chip.sync-chip-ok {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.sync-chip.sync-chip-aviso {
+  background: rgba(251, 238, 203, 0.95);
+  color: var(--color-warning);
+  border-color: transparent;
+}
+
+/* ---------- Configuración: índice de secciones ---------- */
+.config-indice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.config-indice-link {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.config-indice-link:hover {
+  background: var(--color-tint);
+}
+
+#sync-section,
+#config-tarjetas-section,
+#personas-section,
+#respaldo-section,
+#danger-zone-section {
+  scroll-margin-top: 12px;
+}
+
+.ciclo-explicacion {
+  background: var(--color-tint);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  gap: 4px;
+}
+
+/* ---------- Compras: formulario plegable ---------- */
+.compras-top-bar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 18px;
+}
+
+.compra-form-toggle {
+  font-size: 1.05rem;
+  padding: 13px 24px;
+  box-shadow: var(--shadow);
+}
+
+.form-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.form-section-head h2 {
+  margin: 0;
+}
+
+.form-section-head + .lede-hint {
+  margin-top: 6px;
+}
+
+.form-subtitulo {
+  margin-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-tint);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.monto-preview {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  min-height: 1.2em;
+}
+
+.ciclo-hint {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  background: var(--color-tint);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.ciclo-hint.ciclo-hint-aviso {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+/* ---------- Compras: resumen con vistas ---------- */
+.vista-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vista-switch h2 {
+  margin: 0;
+  min-width: 0;
+}
+
+.vista-switch-flecha {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary-dark);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.vista-switch-flecha:hover {
+  background: var(--color-tint);
+}
+
+.vista-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -4px 0 12px;
+}
+
+.vista-chip {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.vista-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.compras-buscar-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.compras-buscar-fila .compras-buscador {
+  flex: 1 1 320px;
+}
+
+.compras-mas-filtros {
+  flex: 1 1 100%;
+}
+
+.compras-mas-filtros > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-primary-dark);
+  padding: 4px 0;
+}
+
+.compras-mas-filtros[open] > summary {
+  margin-bottom: 10px;
+}
+
+.filtros-activos-badge {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* Tabla de compras en computador: celdas algo más justas y categorías
+   largas que bajan de línea, para que las 9 columnas quepan sin barra
+   horizontal. */
+.compras-tabla thead th,
+.compras-tabla tbody td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.compras-tabla .categoria-tag {
+  white-space: normal;
+}
+
+.compras-tabla .row-actions {
+  gap: 6px;
+}
+
+/* Tabla de compras en el teléfono: cada fila se vuelve una tarjeta, sin
+   barra horizontal (descripción y monto arriba, el resto como etiquetas). */
+@media (max-width: 760px) {
+  .compras-tabla thead {
+    display: none;
+  }
+  .compras-tabla,
+  .compras-tabla tbody {
+    display: block;
+  }
+  .compras-tabla tbody tr:not(.compartida-detalle-row) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    padding: 12px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .compras-tabla tbody tr.compartida-detalle-row:not(.hidden) {
+    display: block;
+  }
+  .compras-tabla tbody td {
+    border-bottom: none;
+    padding: 0;
+  }
+  .compras-tabla td.td-desc {
+    order: 1;
+    flex: 1 1 60%;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .compras-tabla td.col-value {
+    order: 2;
+    margin-left: auto;
+    font-size: 1.05rem;
+  }
+  .compras-tabla td.td-fecha,
+  .compras-tabla td.td-meta {
+    order: 3;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+  }
+  .compras-tabla td.td-meta-secundaria {
+    display: none;
+  }
+  .compras-tabla td.td-fecha::before,
+  .compras-tabla td.td-meta::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+  }
+  .compras-tabla td.col-actions {
+    order: 4;
+    flex: 1 1 100%;
+    text-align: left;
+    margin-top: 6px;
+  }
+  .compras-tabla tr.compra-row-compartida td {
+    border-bottom: none;
+  }
+  .compras-tabla tr.compartida-detalle-row td {
+    display: block;
+    padding: 0 12px 12px;
+  }
+}
+
+/* ---------- Deudas: barra "Minimizar todo" ---------- */
+.minimizar-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: -8px 0 16px;
+  background: rgba(243, 248, 246, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.minimizar-toolbar-texto {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.minimizar-toolbar .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Deuda Tarjetas: mes de pago ---------- */
+.mes-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mes-nav-centro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.mes-nav-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+#tarjetas-mes-select {
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--color-tint);
+  text-align: center;
+  max-width: 100%;
+}
+
+.mes-nav-hint {
+  text-align: center;
+  margin: 10px 0 16px;
+}
+
+.mes-stats {
+  margin: 16px 0 8px;
+}
+
+.mes-stats .card-value {
+  font-size: 1.8rem;
+}
+
+.card.card-pendiente {
+  box-shadow: inset 4px 0 0 var(--color-warning), var(--shadow);
+}
+
+.card.card-alerta {
+  box-shadow: inset 4px 0 0 var(--color-danger), var(--shadow);
+}
+
+.card.card-alerta .card-value {
+  color: var(--color-danger-dark);
+}
+
+.card.card-ok .card-sublabel {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.aviso-ciclo,
+.aviso-atrasados {
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.aviso-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Personas del mes */
+.personas-mes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.persona-mes-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  align-self: start;
+}
+
+.persona-mes-card.persona-mes-yo {
+  border-color: var(--color-primary);
+}
+
+.persona-mes-card > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+}
+
+.persona-mes-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.persona-mes-nombre {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.persona-mes-monto {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--color-primary-dark);
+  grid-row: span 2;
+  align-self: center;
+}
+
+.persona-mes-cant {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.persona-mes-body {
+  border-top: 1px solid var(--color-border);
+  padding: 8px 16px 12px;
+}
+
+.persona-mes-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.persona-mes-fila:last-child {
+  border-bottom: none;
+}
+
+/* Estado de cuenta de cada tarjeta */
+.tarjeta-mes-box {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.tarjeta-mes-box.situacion-vencido {
+  border-color: var(--color-danger);
+}
+
+.tarjeta-mes-head {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 18px;
+  background: var(--color-tint);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tarjeta-mes-head::-webkit-details-marker {
+  display: none;
+}
+
+.tarjeta-mes-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tarjeta-mes-titulo .tarjeta-nombre {
+  font-size: 1.2rem;
+}
+
+.tarjeta-mes-titulo .tarjeta-nombre::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.tarjeta-mes-box[open] .tarjeta-mes-titulo .tarjeta-nombre::before {
+  transform: rotate(90deg);
+}
+
+.tarjeta-mes-periodo {
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+}
+
+.situacion-badge {
+  display: inline-block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
+.situacion-badge.ok { background: #d8efe4; color: var(--color-primary-dark); }
+.situacion-badge.soon,
+.situacion-badge.pendiente { background: var(--color-warning-bg); color: var(--color-warning); }
+.situacion-badge.vencido { background: #f6dedb; color: var(--color-danger-dark); }
+.situacion-badge.curso { background: #e4e6fb; color: #3d3fa8; }
+.situacion-badge.neutral { background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+.tarjeta-mes-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.tarjeta-mes-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tarjeta-mes-stat-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.tarjeta-mes-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.tarjeta-mes-stat.ok .tarjeta-mes-stat-value { color: var(--color-primary); }
+.tarjeta-mes-stat.pendiente .tarjeta-mes-stat-value { color: var(--color-warning); }
+
+.tarjeta-mes-body {
+  padding: 4px 18px 18px;
+}
+
+.tarjeta-mes-body .tarjeta-card-actions {
+  flex-wrap: wrap;
+}
+
+.reembolsos-callout {
+  margin-top: 12px;
+}
+
+/* Compras dentro del estado de cuenta: tabla en computador, tarjetas en
+   el teléfono. Letra más grande que el resto de las listas. */
+.cargos-lista {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cargo-row {
+  display: grid;
+  grid-template-columns: 92px minmax(170px, 2.2fr) minmax(90px, 1fr) minmax(130px, 1.4fr) minmax(100px, 1fr) 110px 190px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  font-size: 0.98rem;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.cargo-row:hover,
+.cargo-row:focus-visible {
+  background: var(--color-tint);
+  outline: none;
+}
+
+.cargo-row-head {
+  cursor: default;
+  background: var(--color-tint);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.cargo-row-head:hover {
+  background: var(--color-tint);
+}
+
+.cargo-row-head .cargo-monto {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.cargo-item:last-child .cargo-row,
+.cargo-item:last-child .cargo-menu {
+  border-bottom: none;
+}
+
+.cargo-celda {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cargo-desc-texto {
+  display: block;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+
+.cargo-cuota-tag {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.cargo-monto {
+  text-align: right;
+  font-weight: 800;
+  font-size: 1.08rem;
+  color: var(--color-primary-dark);
+  white-space: nowrap;
+}
+
+.cargo-estado-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.cargo-estado-badge {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 10px;
+  text-align: center;
+}
+
+.cargo-estado-badge.ok { background: #d8efe4; color: var(--color-primary-dark); }
+.cargo-estado-badge.pendiente { background: var(--color-warning-bg); color: var(--color-warning); }
+.cargo-estado-badge.aviso { background: #fde3c8; color: #9a4d00; }
+
+.cargo-flecha {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.cargo-row.cargo-pagada .cargo-desc-texto,
+.cargo-row.cargo-abonada .cargo-desc-texto {
+  color: var(--color-text-muted);
+}
+
+.cargo-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  background: #f8fbfa;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cargo-menu-ayuda {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.abono-tarjeta-form .abono-compras-picker {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .cargo-row.cargo-row-head {
+    display: none;
+  }
+  .cargo-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "desc monto"
+      "meta meta"
+      "estado estado";
+    gap: 6px 10px;
+  }
+  .cargo-desc { grid-area: desc; }
+  .cargo-monto { grid-area: monto; align-self: start; }
+  .cargo-fecha,
+  .cargo-comprador,
+  .cargo-deuda,
+  .cargo-tarjeta {
+    font-size: 0.86rem;
+    color: var(--color-text-muted);
+  }
+  .cargo-fecha::before,
+  .cargo-comprador::before,
+  .cargo-deuda::before,
+  .cargo-tarjeta::before {
+    content: attr(data-label) ": ";
+    font-weight: 700;
+  }
+  /* Las cuatro etiquetas comparten una misma fila que se reparte sola. */
+  .cargo-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+  .cargo-desc { order: 1; flex: 1 1 60%; }
+  .cargo-monto { order: 2; margin-left: auto; }
+  .cargo-fecha { order: 3; }
+  .cargo-comprador { order: 4; }
+  .cargo-deuda { order: 5; }
+  .cargo-tarjeta { order: 6; }
+  .cargo-fecha,
+  .cargo-comprador,
+  .cargo-deuda,
+  .cargo-tarjeta { flex: 0 1 auto; margin-right: 10px; }
+  .cargo-estado { order: 7; flex: 1 1 100%; }
+  .cargo-estado-wrap { justify-content: space-between; }
+  .tarjeta-mes-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tarjeta-mes-stat:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.archivo-antiguo > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.archivo-antiguo > summary::-webkit-details-marker {
+  display: none;
+}
+
+.archivo-antiguo > summary h2 {
+  display: inline;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.archivo-antiguo[open] > summary {
+  margin-bottom: 14px;
+}
+
+.archivo-antiguo-filtro {
+  margin-bottom: 12px;
+}
+
+/* Tarjetas de Estadísticas que llevan a Deuda Tarjetas */
+.card-ir {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.card-ir:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Calculadora: cobro / juntas ---------- */
+.modo-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modo-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+.modo-switch-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-tint);
+}
+
+.modo-switch-icono {
+  font-size: 1.8rem;
+}
+
+.modo-switch-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modo-switch-textos strong {
+  font-size: 1rem;
+}
+
+.modo-switch-textos small {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.calc-paso {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.calc-paso:first-of-type {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.calc-paso-num {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calc-paso-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.calc-paso-titulo {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 5px;
+}
+
+.calc-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.calc-control {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+select.calc-control {
+  min-width: 220px;
+  font-weight: 600;
+}
+
+.btn.calc-control {
+  height: 42px;
+  padding: 0 14px;
+}
+
+.calc-filtros-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.calc-fecha-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.calc-buscador {
+  width: 100%;
+}
+
+.calc-paso .calculadora-lista-header {
+  margin-top: 4px;
+}
+
+.calc-paso .form-actions {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .modo-switch {
+    grid-template-columns: 1fr;
+  }
+  .calc-filtros-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .calc-filtros-grid .calc-buscador {
+    grid-column: 1 / -1;
+  }
+  .calc-paso {
+    grid-template-columns: 1fr;
+  }
+  .calc-paso-num {
+    display: none;
+  }
+  select.calc-control {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+/* ---------- Copia fuera de pantalla para armar el PDF ---------- */
+.pdf-export {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  background: #fff;
+  color: #1d2a26;
+  padding: 36px 44px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.pdf-export .informe-report-header h2 {
+  font-size: 1.6rem;
+}
+
+.pdf-export table {
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.pdf-export thead th {
+  padding: 8px 10px;
+}
+
+.pdf-export tbody td {
+  padding: 8px 10px;
+}
+
+.pdf-export tbody tr:hover {
+  background: transparent;
+}
+
+.pdf-export .table-wrapper {
+  overflow: visible;
+}
+
+.pdf-export .calc-titulo-editable {
+  border-bottom: none;
+}
+
+/* Encabezado de cada mes: título a la izquierda, resumen a la derecha (en
+   el teléfono, el resumen baja a su propia línea). */
+.month-group summary {
+  justify-content: flex-start;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+}
+
+.month-group summary .month-meta {
+  margin-left: auto;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .month-group summary .month-meta {
+    flex-basis: 100%;
+    margin-left: 18px;
+    text-align: left;
   }
 }

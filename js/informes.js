@@ -475,4 +475,6 @@
     informeImprimirBtn.classList.add("hidden");
   });
 
-  informeImprimirBtn.addEventListener("click", function () { window.print(); });
+  informeImprimirBtn.addEventListener("click", function () {
+    descargarPdfDe(informeResultadoEl, "Informe", informeImprimirBtn);
+  });

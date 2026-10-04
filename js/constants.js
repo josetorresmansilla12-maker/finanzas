@@ -68,7 +68,7 @@
   var YO = { id: "yo", nombre: "Yo", hogar: true };
 
   // Personas por defecto la primera vez que se abre la app. Se pueden agregar
-  // o eliminar desde la pestaña Tarjetas → "Personas".
+  // o eliminar desde la pestaña ⚙️ Configuración → "Personas".
   var MIEMBROS_DEFAULT = [
     { id: "papa", nombre: "Papá", hogar: true },
     { id: "colun", nombre: "Colun", hogar: true },

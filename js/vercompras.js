@@ -147,27 +147,39 @@
       details.appendChild(tableWrap);
 
       // "Marcar pagada" en una compra solo dice que la persona te devolvió
-      // esa compra puntual — no que la tarjeta ya está saldada con el
-      // banco (son cosas independientes a propósito, ver Deuda Tarjetas).
-      // Para cerrar de verdad el ciclo de una tarjeta, este atajo llama a
-      // la misma acción que el botón "Marcar como pagado" de esa pestaña.
-      var tarjetasDelMes = Array.from(new Set(
-        items.filter(function (c) { return c.tarjetaId && esTarjetaPersonal(c.tarjetaId); })
-          .map(function (c) { return c.tarjetaId; })
-      ));
-      if (tarjetasDelMes.length > 0) {
+      // esa compra puntual — no que la tarjeta ya está pagada en el banco.
+      // Para eso, este atajo marca como pagado el estado de cuenta (mes de
+      // pago) donde cayeron estas compras, igual que en Deuda Tarjetas.
+      var estadosDelMes = {};
+      items.forEach(function (c) {
+        if (!c.tarjetaId || !esTarjetaPersonal(c.tarjetaId)) return;
+        var tarjeta = tarjetaById(c.tarjetaId);
+        var key = primerPeriodoKeyDeCompra(c, tarjeta);
+        estadosDelMes[c.tarjetaId + "|" + key] = { tarjeta: tarjeta, key: key };
+      });
+      var pares = Object.keys(estadosDelMes).sort().map(function (k) { return estadosDelMes[k]; });
+      if (pares.length > 0) {
+        invalidarCacheEstados();
         var cerrarWrap = document.createElement("div");
         cerrarWrap.className = "vercompras-cerrar-tarjeta";
         var cerrarHint = document.createElement("p");
         cerrarHint.className = "label-hint";
-        cerrarHint.textContent = "\"Marcar pagada\" en cada compra solo avisa que te devolvieron esa parte — para cerrar la tarjeta con el banco, usa esto:";
+        cerrarHint.textContent = "\"Marcar pagada\" en cada compra solo avisa que te devolvieron esa parte — para dejar la tarjeta pagada en el banco, usa esto:";
         cerrarWrap.appendChild(cerrarHint);
-        tarjetasDelMes.forEach(function (tarjetaId) {
+        pares.forEach(function (par) {
+          var e = estadoDeCuenta(par.tarjeta, par.key);
+          if (e.pendiente <= 0) {
+            var ok = document.createElement("span");
+            ok.className = "due-badge ok";
+            ok.textContent = "✅ " + par.tarjeta.nombre + " · deuda de " + mesLargo(par.key) + " pagada";
+            cerrarWrap.appendChild(ok);
+            return;
+          }
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "btn btn-secondary btn-small";
-          btn.textContent = "✅ Marcar " + tarjetaLabel(tarjetaId) + " como pagada y lista";
-          btn.addEventListener("click", function () { markTarjetaPagada(tarjetaId); });
+          btn.textContent = "✅ Marcar " + par.tarjeta.nombre + " · deuda de " + mesLargo(par.key) + " como pagada (" + formatCurrency(e.pendiente) + ")";
+          btn.addEventListener("click", function () { markTarjetaPagada(par.tarjeta.id, par.key); });
           cerrarWrap.appendChild(btn);
         });
         details.appendChild(cerrarWrap);

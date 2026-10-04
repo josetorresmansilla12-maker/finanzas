@@ -72,10 +72,101 @@
   var comprasFilterTo = document.getElementById("compras-filter-to");
   var comprasFilterDatesClear = document.getElementById("compras-filter-dates-clear");
 
-  var fijosMonthsWrapper = document.getElementById("fijos-months-wrapper");
-  var fijosEmptyState = document.getElementById("fijos-empty-state");
-  var variablesMonthsWrapper = document.getElementById("variables-months-wrapper");
-  var variablesEmptyState = document.getElementById("variables-empty-state");
+  var comprasMonthsWrapper = document.getElementById("compras-months-wrapper");
+  var comprasEmptyState = document.getElementById("compras-empty-state");
+  var comprasVistaTitulo = document.getElementById("compras-vista-titulo");
+  var comprasVistaHint = document.getElementById("compras-vista-hint");
+  var comprasMasFiltros = document.getElementById("compras-mas-filtros");
+  var comprasFiltrosActivosBadge = document.getElementById("compras-filtros-activos");
+
+  var compraFormSection = document.getElementById("compra-form-section");
+  var compraFormToggleBtn = document.getElementById("compra-form-toggle-btn");
+  var compraFormCerrarBtn = document.getElementById("compra-form-cerrar-btn");
+  var compraMontoPreview = document.getElementById("compra-monto-preview");
+  var compraCicloHint = document.getElementById("compra-ciclo-hint");
+
+  // Preferencias de pantalla de ESTE dispositivo (qué vista de compras se
+  // estaba mirando, si el formulario quedó abierto). A propósito sin el
+  // prefijo "finanzas_": así no viajan a la nube ni ensucian la
+  // sincronización con el otro equipo.
+  function leerPreferenciaUI(key, fallback) {
+    try {
+      var v = localStorage.getItem("ui_" + key);
+      return v === null ? fallback : v;
+    } catch (e) { return fallback; }
+  }
+  function guardarPreferenciaUI(key, value) {
+    try { localStorage.setItem("ui_" + key, value); } catch (e) {}
+  }
+
+  // ---------- Formulario plegable ----------
+  //
+  // El formulario es largo: plegado, la lista de compras queda al inicio de
+  // la pestaña. Recuerda si lo dejaste abierto (para registrar varias
+  // compras seguidas) y se abre solo al tocar "Editar" en cualquier compra.
+
+  function abrirFormularioCompra(conScroll) {
+    compraFormSection.classList.remove("hidden");
+    compraFormToggleBtn.classList.add("hidden");
+    guardarPreferenciaUI("compra_form_abierto", "1");
+    if (conScroll) compraFormSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cerrarFormularioCompra() {
+    compraFormSection.classList.add("hidden");
+    compraFormToggleBtn.classList.remove("hidden");
+    guardarPreferenciaUI("compra_form_abierto", "0");
+  }
+
+  compraFormToggleBtn.addEventListener("click", function () {
+    abrirFormularioCompra(false);
+    compraDescripcionInput.focus();
+  });
+  compraFormCerrarBtn.addEventListener("click", function () {
+    if (editingCompraId || editingCompartidaGrupoId) resetCompraForm();
+    cerrarFormularioCompra();
+  });
+  if (leerPreferenciaUI("compra_form_abierto", "0") === "1") abrirFormularioCompra(false);
+
+  // Vista previa del monto con separador de miles mientras se escribe
+  // ("45000" → "$45.000"), para no equivocarse en un cero.
+  function actualizarMontoPreview() {
+    var n = Number(compraMontoInput.value);
+    compraMontoPreview.textContent = n > 0 ? "= " + formatCurrency(n) : "";
+  }
+
+  // Aviso en vivo de a qué mes de pago de la tarjeta corresponde la compra,
+  // según su ciclo de facturación (ver periodoDeFecha en tarjetas.js).
+  var compraFechaPagoField = compraFechaPagoInput.closest(".field");
+  var compraFechaPagoLabelTexto = compraFechaPagoField.querySelector("label").firstChild;
+
+  function actualizarCicloHint() {
+    var tarjeta = esMetodoPagoTarjeta(compraMetodoPagoSelect.value) ? tarjetaById(compraMetodoPagoSelect.value) : null;
+    var tipoRadio = document.querySelector('input[name="compra-type"]:checked');
+    var enCuotas = !!tipoRadio && tipoRadio.value === "cuotas";
+
+    // Con una tarjeta propia que ya tiene su ciclo, un pago único se paga
+    // solo en su estado de cuenta: el campo de vencimiento sobra (se oculta,
+    // sin borrar lo que tuviera). En cuotas sirve para "meses sin pagar".
+    var cicloResuelve = !!tarjeta && esTarjetaPersonal(tarjeta.id) && tieneCicloCompleto(tarjeta);
+    compraFechaPagoField.classList.toggle("hidden", cicloResuelve && !enCuotas && !editingCompartidaGrupoId);
+    compraFechaPagoLabelTexto.textContent = enCuotas ? "Primer vencimiento " : "Fecha de pago / vencimiento ";
+    compraFechaPagoField.querySelector("label .label-hint").textContent = enCuotas && cicloResuelve
+      ? "(opcional — déjalo vacío salvo que el banco te haya dado meses sin pagar)"
+      : "(opcional)";
+
+    if (!tarjeta || !esTarjetaPersonal(tarjeta.id)) {
+      compraCicloHint.classList.add("hidden");
+      return;
+    }
+    var periodo = periodoDeFecha(tarjeta, compraFechaInput.value || todayStamp());
+    compraCicloHint.classList.remove("hidden");
+    compraCicloHint.classList.toggle("ciclo-hint-aviso", periodo.aproximado);
+    compraCicloHint.textContent = periodo.aproximado
+      ? "⚠️ Esta tarjeta no tiene día de cierre y pago: se asume que se paga en " + mesLargo(periodo.key) + ". Complétalos en ⚙️ Configuración."
+      : "💳 Entra en la deuda de " + mesLargo(periodo.key) + " (cierra el " + formatDateDisplay(periodo.cierreIso) +
+        ", se paga el " + formatDateDisplay(periodo.pagoIso) + ").";
+  }
 
   // ---------- Categoría select ----------
 
@@ -331,7 +422,9 @@
   }
 
   // Ninguna fecha se rellena sola con solo elegir la tarjeta: el usuario
-  // tiene que tocar el botón "Usar vencimiento de la tarjeta" a propósito.
+  // tiene que tocar el botón a propósito. Usa el ciclo real (cierre + pago):
+  // una compra hecha después del cierre se paga recién al mes subsiguiente,
+  // no en el próximo día de pago.
   var compraFechaPagoSugerirBtn = document.getElementById("compra-fecha-pago-sugerir-btn");
   if (compraFechaPagoSugerirBtn) {
     compraFechaPagoSugerirBtn.addEventListener("click", function () {
@@ -345,9 +438,16 @@
         return;
       }
       var base = compraFechaInput.value || todayStamp();
-      compraFechaPagoInput.value = nextOccurrenceOfDay(Number(tarjeta.diaPago), base);
+      compraFechaPagoInput.value = periodoDeFecha(tarjeta, base).pagoIso;
     });
   }
+
+  compraMontoInput.addEventListener("input", actualizarMontoPreview);
+  compraMetodoPagoSelect.addEventListener("change", actualizarCicloHint);
+  compraFechaInput.addEventListener("change", actualizarCicloHint);
+  document.querySelectorAll('input[name="compra-type"]').forEach(function (radio) {
+    radio.addEventListener("change", actualizarCicloHint);
+  });
 
   // ---------- Personas conocidas (datalist) ----------
 
@@ -371,10 +471,14 @@
   // El monto de cada cuota se calcula dividiendo el total; la última cuota
   // absorbe el resto del redondeo para que la suma cuadre siempre con el
   // total real de la compra.
+  //
+  // Con tarjeta propia que tiene ciclo (cierre + pago), la primera cuota
+  // vence el día de pago del estado de cuenta donde cae la compra — no "un
+  // mes después de comprar", que puede quedar corrido en un mes.
   function buildCuotaSchedule(compra) {
     var n = compra.cuotas || 1;
     var base = Math.floor((Number(compra.monto) || 0) / n);
-    var baseDate = compra.fechaPago || addMonthsToIso(compra.fecha, 1);
+    var baseDate = primerVencimientoDeCompraTarjeta(compra) || compra.fechaPago || addMonthsToIso(compra.fecha, 1);
     var pagadas = Array.isArray(compra.cuotasPagadas) ? compra.cuotasPagadas : [];
     var acumulado = 0;
     var schedule = [];
@@ -915,6 +1019,8 @@
     submitCompraBtn.textContent = "Registrar compra";
     formTitleCompra.textContent = "Registrar compra";
     cancelEditCompraBtn.classList.add("hidden");
+    actualizarMontoPreview();
+    actualizarCicloHint();
   }
 
   function startEditCompra(id) {
@@ -980,8 +1086,10 @@
     formTitleCompra.textContent = "Editar compra";
     cancelEditCompraBtn.classList.remove("hidden");
     clearCompraErrors();
+    actualizarMontoPreview();
+    actualizarCicloHint();
     activateTab("compras");
-    compraForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    abrirFormularioCompra(true);
   }
 
   // Edita los datos comunes de una compra compartida completa (categoría,
@@ -1054,8 +1162,9 @@
     formTitleCompra.textContent = "Editar compra compartida";
     cancelEditCompraBtn.classList.remove("hidden");
     clearCompraErrors();
+    actualizarCicloHint();
     activateTab("compras");
-    compraForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    abrirFormularioCompra(true);
   }
 
   cancelEditCompraBtn.addEventListener("click", resetCompraForm);
@@ -1179,6 +1288,7 @@
   comprasFilterTarjeta.addEventListener("change", renderCompras);
   comprasFilterComprador.addEventListener("change", renderCompras);
   comprasFilterAcreedor.addEventListener("change", renderCompras);
+  // (actualizarBadgeFiltros corre dentro de renderCompras)
   comprasFilterFrom.addEventListener("change", function () { updateComprasFilterClearBtn(); renderCompras(); });
   comprasFilterTo.addEventListener("change", function () { updateComprasFilterClearBtn(); renderCompras(); });
   comprasFilterDatesClear.addEventListener("click", function () {
@@ -1190,6 +1300,64 @@
 
   function updateComprasFilterClearBtn() {
     comprasFilterDatesClear.classList.toggle("hidden", !comprasFilterFrom.value && !comprasFilterTo.value);
+  }
+
+  // Cuántos filtros de "Más filtros" están puestos: se muestra en el
+  // título plegado para que no quede un filtro escondido sin darse cuenta.
+  function actualizarBadgeFiltros() {
+    var activos = [comprasFilterTarjeta, comprasFilterComprador, comprasFilterAcreedor, comprasFilterFrom, comprasFilterTo]
+      .filter(function (el) { return !!el.value; }).length;
+    comprasFiltrosActivosBadge.classList.toggle("hidden", activos === 0);
+    comprasFiltrosActivosBadge.textContent = activos + (activos === 1 ? " activo" : " activos");
+  }
+
+  // ---------- Vista del resumen de compras ----------
+  //
+  // Una sola lista con tres vistas que se alternan con las flechas (o los
+  // chips): todas juntas — lo más útil para ver el mes completo —, solo
+  // variables, o solo fijos y suscripciones.
+
+  var COMPRAS_VISTAS = [
+    { id: "todas", titulo: "🧾 Todas las compras", hint: "Gastos fijos, suscripciones y compras variables juntos, mes a mes." },
+    { id: "variables", titulo: "🛍️ Compras variables", hint: "Ropa, tecnología, ocio, autos y otras compras variables." },
+    { id: "fijos", titulo: "🏠 Gastos fijos y suscripciones", hint: "Cuentas del hogar, alimentos y suscripciones/streaming." }
+  ];
+  var comprasVista = leerPreferenciaUI("compras_vista", "todas");
+  if (!COMPRAS_VISTAS.some(function (v) { return v.id === comprasVista; })) comprasVista = "todas";
+
+  function setComprasVista(id) {
+    comprasVista = id;
+    guardarPreferenciaUI("compras_vista", id);
+    renderCompras();
+  }
+
+  function moverComprasVista(paso) {
+    var idx = COMPRAS_VISTAS.findIndex(function (v) { return v.id === comprasVista; });
+    var siguiente = COMPRAS_VISTAS[(idx + paso + COMPRAS_VISTAS.length) % COMPRAS_VISTAS.length];
+    setComprasVista(siguiente.id);
+  }
+
+  document.getElementById("compras-vista-prev").addEventListener("click", function () { moverComprasVista(-1); });
+  document.getElementById("compras-vista-next").addEventListener("click", function () { moverComprasVista(1); });
+  document.querySelectorAll("#compras-vista-chips .vista-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () { setComprasVista(chip.dataset.vista); });
+  });
+
+  function comprasDeLaVista(list) {
+    if (comprasVista === "variables") return list.filter(function (c) { return categoriaGroup(c) === "variable"; });
+    if (comprasVista === "fijos") return list.filter(function (c) { return categoriaGroup(c) !== "variable"; });
+    return list;
+  }
+
+  function renderComprasVistaHeader() {
+    var vista = COMPRAS_VISTAS.find(function (v) { return v.id === comprasVista; });
+    comprasVistaTitulo.textContent = vista.titulo;
+    comprasVistaHint.textContent = vista.hint;
+    document.querySelectorAll("#compras-vista-chips .vista-chip").forEach(function (chip) {
+      var activo = chip.dataset.vista === comprasVista;
+      chip.classList.toggle("active", activo);
+      chip.setAttribute("aria-selected", String(activo));
+    });
   }
 
   // Busca en descripción, categoría y notas a la vez, sin distinguir tildes
@@ -1229,10 +1397,13 @@
     }
 
     var tdFecha = document.createElement("td");
+    tdFecha.className = "td-fecha";
+    tdFecha.dataset.label = "Fecha";
     tdFecha.textContent = formatDateDisplay(compra.fecha);
     tr.appendChild(tdFecha);
 
     var tdDesc = document.createElement("td");
+    tdDesc.className = "td-desc";
     var descText = document.createElement("span");
     descText.textContent = compraDisplayName(compra);
     tdDesc.appendChild(descText);
@@ -1254,6 +1425,8 @@
     tr.appendChild(tdDesc);
 
     var tdCat = document.createElement("td");
+    tdCat.className = "td-meta";
+    tdCat.dataset.label = "Categoría";
     var catTag = document.createElement("span");
     catTag.className = "categoria-tag " + categoriaGroup(compra);
     catTag.textContent = categoriaLabel(compra);
@@ -1261,18 +1434,26 @@
     tr.appendChild(tdCat);
 
     var tdTarjeta = document.createElement("td");
+    tdTarjeta.className = "td-meta";
+    tdTarjeta.dataset.label = "Pagado con";
     tdTarjeta.textContent = metodoPagoLabel(compra);
     tr.appendChild(tdTarjeta);
 
     var tdCuotas = document.createElement("td");
+    tdCuotas.className = "td-meta" + (compra.cuotas > 1 ? "" : " td-meta-secundaria");
+    tdCuotas.dataset.label = "Cuotas";
     tdCuotas.textContent = compra.cuotas > 1 ? (compra.cuotas + "x" + (compra.tieneInteres ? " · con interés" : " · sin interés")) : "Único";
     tr.appendChild(tdCuotas);
 
     var tdComprador = document.createElement("td");
+    tdComprador.className = "td-meta";
+    tdComprador.dataset.label = "Compró";
     tdComprador.textContent = compradorNombre(compra);
     tr.appendChild(tdComprador);
 
     var tdDebe = document.createElement("td");
+    tdDebe.className = "td-meta";
+    tdDebe.dataset.label = "Deuda";
     var debeTag = document.createElement("span");
     debeTag.className = "debe-tag " + deudaTagClass(compra);
     debeTag.textContent = deudaTagText(compra);
@@ -1343,10 +1524,13 @@
     tr.className = "compra-row-compartida" + (resaltada ? " compra-resaltada" : "");
 
     var tdFecha = document.createElement("td");
+    tdFecha.className = "td-fecha";
+    tdFecha.dataset.label = "Fecha";
     tdFecha.textContent = formatDateDisplay(muestra.fecha);
     tr.appendChild(tdFecha);
 
     var tdDesc = document.createElement("td");
+    tdDesc.className = "td-desc";
     var toggleBtn = document.createElement("button");
     toggleBtn.type = "button";
     toggleBtn.className = "compartida-toggle-btn";
@@ -1378,6 +1562,8 @@
     tr.appendChild(tdDesc);
 
     var tdCat = document.createElement("td");
+    tdCat.className = "td-meta";
+    tdCat.dataset.label = "Categoría";
     var catTag = document.createElement("span");
     catTag.className = "categoria-tag " + categoriaGroup(muestra);
     catTag.textContent = categoriaLabel(muestra);
@@ -1385,18 +1571,26 @@
     tr.appendChild(tdCat);
 
     var tdMetodo = document.createElement("td");
+    tdMetodo.className = "td-meta";
+    tdMetodo.dataset.label = "Pagado con";
     tdMetodo.textContent = metodoPagoLabel(muestra);
     tr.appendChild(tdMetodo);
 
     var tdCuotas = document.createElement("td");
+    tdCuotas.className = "td-meta td-meta-secundaria";
+    tdCuotas.dataset.label = "Cuotas";
     tdCuotas.textContent = "—";
     tr.appendChild(tdCuotas);
 
     var tdComprador = document.createElement("td");
+    tdComprador.className = "td-meta";
+    tdComprador.dataset.label = "Compró";
     tdComprador.textContent = miembros.length + (miembros.length === 1 ? " persona" : " personas");
     tr.appendChild(tdComprador);
 
     var tdDebe = document.createElement("td");
+    tdDebe.className = "td-meta";
+    tdDebe.dataset.label = "Deuda";
     var pendientes = miembros.filter(function (m) { return !m.pagada; }).length;
     var debeTag = document.createElement("span");
     debeTag.className = "debe-tag " + (pendientes > 0 ? "me_deben" : "personal");
@@ -1478,7 +1672,17 @@
       titleSpan.textContent = monthLabel(key);
       var metaSpan = document.createElement("span");
       metaSpan.className = "month-meta";
-      metaSpan.textContent = filas.length + (filas.length === 1 ? " compra · " : " compras · ") + formatCurrency(total);
+      var metaTexto = filas.length + (filas.length === 1 ? " compra · " : " compras · ") + formatCurrency(total);
+      // En la vista "todas" ayuda ver de un vistazo cuánto fue fijo y cuánto
+      // variable dentro del mismo mes.
+      if (comprasVista === "todas") {
+        var totalVariables = items.filter(function (c) { return categoriaGroup(c) === "variable"; })
+          .reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
+        if (totalVariables > 0 && totalVariables < total) {
+          metaTexto += " (variables " + formatCurrency(totalVariables) + " · fijos " + formatCurrency(total - totalVariables) + ")";
+        }
+      }
+      metaSpan.textContent = metaTexto;
       summary.appendChild(titleSpan);
       summary.appendChild(metaSpan);
       details.appendChild(summary);
@@ -1486,8 +1690,9 @@
       var tableWrap = document.createElement("div");
       tableWrap.className = "table-wrapper";
       var table = document.createElement("table");
+      table.className = "compras-tabla";
       var thead = document.createElement("thead");
-      thead.innerHTML = "<tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Método</th><th>Cuotas</th><th>Compró</th><th>Deuda</th><th class=\"col-value\">Monto</th><th class=\"col-actions\">Acciones</th></tr>";
+      thead.innerHTML = "<tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Pagado con</th><th>Cuotas</th><th>Compró</th><th>Deuda</th><th class=\"col-value\">Monto</th><th class=\"col-actions\">Acciones</th></tr>";
       table.appendChild(thead);
       var tbody = document.createElement("tbody");
       filas.forEach(function (fila) {
@@ -1528,22 +1733,24 @@
     downloadFile(filenamePrefix + "_" + todayStamp() + ".csv", csv, "text/csv;charset=utf-8;");
   }
 
-  document.getElementById("export-fijos-csv-btn").addEventListener("click", function () {
-    var list = applyComprasFilters(loadCompras()).filter(function (c) { return categoriaGroup(c) !== "variable"; });
-    exportComprasCSV(list, "gastos_fijos");
-  });
-  document.getElementById("export-variables-csv-btn").addEventListener("click", function () {
-    var list = applyComprasFilters(loadCompras()).filter(function (c) { return categoriaGroup(c) === "variable"; });
-    exportComprasCSV(list, "compras_variables");
+  // Exporta exactamente lo que se está viendo (vista + filtros).
+  document.getElementById("export-compras-csv-btn").addEventListener("click", function () {
+    var list = comprasDeLaVista(applyComprasFilters(loadCompras()));
+    var prefijos = { todas: "compras", variables: "compras_variables", fijos: "gastos_fijos" };
+    exportComprasCSV(list, prefijos[comprasVista] || "compras");
   });
 
   // ---------- Render principal ----------
 
   function renderCompras() {
-    var filtered = applyComprasFilters(loadCompras());
+    var filtered = comprasDeLaVista(applyComprasFilters(loadCompras()));
 
-    renderMonthGroups(fijosMonthsWrapper, fijosEmptyState, filtered.filter(function (c) { return categoriaGroup(c) !== "variable"; }));
-    renderMonthGroups(variablesMonthsWrapper, variablesEmptyState, filtered.filter(function (c) { return categoriaGroup(c) === "variable"; }));
+    renderComprasVistaHeader();
+    actualizarBadgeFiltros();
+    comprasEmptyState.textContent = loadCompras().length === 0
+      ? "Aún no hay compras registradas. Toca \"➕ Registrar compra\" para agregar la primera."
+      : "No hay compras que calcen con esta vista o filtros.";
+    renderMonthGroups(comprasMonthsWrapper, comprasEmptyState, filtered);
 
     populateMetodoPagoSelect(compraMetodoPagoSelect);
     refreshPersonasConocidas();

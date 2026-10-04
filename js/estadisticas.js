@@ -616,14 +616,18 @@
     estadDeboPersonasEl.textContent = formatCurrency(totalDeudasMias());
     estadMeDebenEl.textContent = formatCurrency(totalMeDeben());
 
-    var totalDeboTarjetas = misTarjetas().reduce(function (sum, t) { return sum + balanceForTarjeta(t.id).pendiente; }, 0);
-    estadDeboTarjetasEl.textContent = formatCurrency(totalDeboTarjetas);
-    // Cuánto de esa deuda es por compras mías (no de Colun, papá, etc.): no
-    // descuenta abonos porque esos no son atribuibles a una sola persona.
-    estadDeboTarjetasMioEl.textContent = formatCurrency(totalGeneradoPorComprador(YO.id));
-    // Acumulado de lo marcado "ya abonado a la tarjeta" (checklist individual
-    // o abono manual con compras seleccionadas), no la deuda pendiente.
-    estadAbonadoTarjetasEl.textContent = formatCurrency(totalAplicadoABancoPorCompras());
+    // Tarjetas: siempre el mes de pago en curso (la "deuda de octubre"), no
+    // el total acumulado — la tarjeta se usa para compras de varias
+    // personas y ese total no refleja la plata real de nadie.
+    var tarjetasMes = resumenTarjetasParaEstadisticas();
+    var mesTxt = mesLargo(tarjetasMes.key);
+    document.getElementById("estad-debo-tarjetas-label").textContent = "Tarjetas: falta pagar (deuda de " + mesTxt + ")";
+    estadDeboTarjetasEl.textContent = formatCurrency(tarjetasMes.pendiente);
+    document.getElementById("estad-debo-tarjetas-sub").textContent = tarjetasMes.situacion;
+    document.getElementById("estad-debo-tarjetas-mio-label").textContent = "Mis compras en tarjeta (deuda de " + mesTxt + ")";
+    estadDeboTarjetasMioEl.textContent = formatCurrency(tarjetasMes.mio);
+    document.getElementById("estad-abonado-tarjetas-label").textContent = "Abonado a tarjetas (deuda de " + mesTxt + ")";
+    estadAbonadoTarjetasEl.textContent = formatCurrency(tarjetasMes.pagado);
 
     var byCategoria = {};
     compras.forEach(function (c) {
@@ -740,12 +744,19 @@
       comprasResaltadasIds = new Set(idsParaResaltar(tipo));
       limpiarFiltrosCompras();
       activateTab("compras");
-      renderCompras();
+      // En una vista parcial (solo variables/solo fijos) algunas compras
+      // resaltadas podrían quedar fuera: se muestra la lista completa.
+      setComprasVista("todas");
       actualizarBannerResaltado();
       actualizarTarjetasResaltado();
       var primera = document.querySelector(".compra-resaltada");
       if (primera) primera.scrollIntoView({ behavior: "smooth", block: "center" });
     });
+  });
+
+  // Las tarjetas de tarjetas de crédito llevan directo a su pestaña.
+  document.querySelectorAll(".card-ir").forEach(function (btn) {
+    btn.addEventListener("click", function () { activateTab("deuda-tarjetas"); });
   });
 
   var quitarResaltadoBtn = document.getElementById("compras-resaltado-quitar-btn");

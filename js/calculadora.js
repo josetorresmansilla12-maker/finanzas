@@ -436,7 +436,7 @@
     var personaId = calcPersonaSelect.value;
     var persona = personaById(personaId);
     if (!persona) {
-      showToast("Agrega primero una persona en Tarjetas → Personas.");
+      showToast("Agrega primero una persona en ⚙️ Configuración → Personas.");
       return;
     }
     var compras = loadCompras().filter(function (c) { return calcSeleccionadas.has(c.id); })
@@ -464,6 +464,9 @@
     calcImprimirBtn.classList.add("hidden");
   });
 
-  calcImprimirBtn.addEventListener("click", function () { window.print(); });
+  calcImprimirBtn.addEventListener("click", function () {
+    var persona = personaById(calcPersonaSelect.value);
+    descargarPdfDe(calcResultadoEl, "Cobro_" + (persona ? persona.nombre : "persona"), calcImprimirBtn);
+  });
 
   renderCalcLista();

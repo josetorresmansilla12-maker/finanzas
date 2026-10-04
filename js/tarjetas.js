@@ -84,6 +84,104 @@
     return info;
   }
 
+  // =========================================================
+  // Ciclo de facturación (estado de cuenta)
+  //
+  // Una tarjeta no se paga por mes calendario: el banco "cierra" (factura)
+  // un día fijo, y todo lo comprado desde el cierre anterior hasta ese día
+  // se paga junto en el día de pago siguiente. Ejemplo con cierre el 20 y
+  // pago el 5: lo comprado del 21/08 al 20/09 es la "deuda de octubre"
+  // (vence el 05/10), y lo comprado desde el 21/09 ya pasa a noviembre.
+  //
+  // Cada estado de cuenta se identifica por su MES DE PAGO ("YYYY-MM"), que
+  // es como se habla de él: "la deuda de octubre".
+  //
+  // Si el banco da un rango de cierre ("entre el 18 y el 20") se usa el
+  // último día: en la duda, la compra cae en el estado que se paga antes y
+  // la plata no te pilla desprevenido. Sin datos, se asume cierre a fin de
+  // mes y pago al mes siguiente (marcado como "aproximado").
+  // =========================================================
+
+  function diaCierreDe(tarjeta) {
+    return Number(tarjeta && (tarjeta.diaFacturacionHasta || tarjeta.diaFacturacion)) || null;
+  }
+
+  function diaPagoDe(tarjeta) {
+    return Number(tarjeta && tarjeta.diaPago) || null;
+  }
+
+  function tieneCicloCompleto(tarjeta) {
+    return !!(diaCierreDe(tarjeta) && diaPagoDe(tarjeta));
+  }
+
+  // Qué datos faltan para calcular el ciclo real (para el aviso).
+  function datosCicloFaltantes(tarjeta) {
+    var faltan = [];
+    if (!diaCierreDe(tarjeta)) faltan.push("día de cierre (facturación)");
+    if (!diaPagoDe(tarjeta)) faltan.push("día de pago (vencimiento)");
+    return faltan;
+  }
+
+  function isoEnMes(mesKey, dia) {
+    var parts = mesKey.split("-").map(Number);
+    return dateToIso(parts[0], parts[1] - 1, Math.min(dia, daysInMonth(parts[0], parts[1] - 1)));
+  }
+
+  function sumarMesesKey(mesKey, n) {
+    return addMonthsToIso(mesKey + "-01", n).slice(0, 7);
+  }
+
+  // "octubre", o "octubre 2027" si no es del año en curso.
+  function mesLargo(mesKey) {
+    var parts = mesKey.split("-");
+    var nombre = MESES[Number(parts[1]) - 1] || "";
+    return parts[0] === todayStamp().slice(0, 4) ? nombre : nombre + " " + parts[0];
+  }
+
+  // Meses entre el cierre y el pago: si se paga un día posterior al cierre,
+  // es el mismo mes (cierra el 1, paga el 20); si no, el mes siguiente.
+  function offsetMesPago(tarjeta) {
+    var cierre = diaCierreDe(tarjeta) || 31;
+    var pago = diaPagoDe(tarjeta);
+    if (!pago) return 1;
+    return pago > cierre ? 0 : 1;
+  }
+
+  // Estado de cuenta que se paga en `mesPagoKey`.
+  function periodoPorKey(tarjeta, mesPagoKey) {
+    var cierreDia = diaCierreDe(tarjeta) || 31;
+    var mesCierre = sumarMesesKey(mesPagoKey, -offsetMesPago(tarjeta));
+    var cierreIso = isoEnMes(mesCierre, cierreDia);
+    var inicioIso = addDaysToIso(isoEnMes(sumarMesesKey(mesCierre, -1), cierreDia), 1);
+    var pagoIso = diaPagoDe(tarjeta) ? isoEnMes(mesPagoKey, diaPagoDe(tarjeta)) : null;
+    if (pagoIso && pagoIso <= cierreIso) pagoIso = addDaysToIso(cierreIso, 1);
+    return {
+      key: mesPagoKey,
+      inicioIso: inicioIso,
+      cierreIso: cierreIso,
+      pagoIso: pagoIso,
+      // Sin día de pago se considera vencido recién al terminar el mes.
+      vencimientoIso: pagoIso || isoEnMes(mesPagoKey, 31),
+      aproximado: !tieneCicloCompleto(tarjeta)
+    };
+  }
+
+  // Estado de cuenta en el que cae una compra hecha el día `iso`.
+  function periodoDeFecha(tarjeta, iso) {
+    var mes = monthKey(iso);
+    var mesCierre = iso <= isoEnMes(mes, diaCierreDe(tarjeta) || 31) ? mes : sumarMesesKey(mes, 1);
+    return periodoPorKey(tarjeta, sumarMesesKey(mesCierre, offsetMesPago(tarjeta)));
+  }
+
+  // Estado de cuenta en curso hoy (todavía no cierra) y el último ya cerrado.
+  function periodoEnCurso(tarjeta) {
+    return periodoDeFecha(tarjeta, todayStamp());
+  }
+
+  function periodoCerradoMasReciente(tarjeta) {
+    return periodoPorKey(tarjeta, sumarMesesKey(periodoEnCurso(tarjeta).key, -1));
+  }
+
   // "día 8" o "entre el 8 y el 10", según haya rango o no.
   function diaOrRangoLabel(dia, diaHasta) {
     if (!dia) return "";

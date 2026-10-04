@@ -22,19 +22,26 @@
   function renderAppAlerts() {
     appAlertsEl.innerHTML = "";
 
-    // Aviso: tarjetas que vencen dentro de su ventana de aviso
-    var dueSoonCards = loadTarjetas().filter(function (t) {
+    // Aviso: tarjetas que vencen dentro de su ventana de aviso. Las propias
+    // solo avisan si su estado de cuenta todavía tiene saldo (si ya está
+    // pagado no hay nada que recordar), y dicen cuánto falta. Las tarjetas
+    // de otras personas avisan solo por fecha, como recordatorio.
+    var propiasPorVencer = tarjetasPorVencerConSaldo();
+    var ajenasPorVencer = loadTarjetas().filter(function (t) {
+      if (esTarjetaPersonal(t.id)) return false;
       var due = nextDueInfo(t);
       if (!due) return false;
       var aviso = t.diasAviso != null ? t.diasAviso : DEFAULT_DIAS_AVISO;
       return due.daysUntil <= aviso;
-    }).sort(function (a, b) { return nextDueInfo(a).daysUntil - nextDueInfo(b).daysUntil; });
+    });
+    var dueSoonCards = propiasPorVencer.concat(ajenasPorVencer);
 
     if (dueSoonCards.length > 0) {
-      var names = dueSoonCards.map(function (t) {
-        var due = nextDueInfo(t);
-        return t.nombre + " (" + dueBadgeLabel(due.daysUntil).toLowerCase() + ")";
-      }).join(", ");
+      var names = propiasPorVencer.map(function (x) {
+        return x.tarjeta.nombre + " (" + dueBadgeLabel(x.dias).toLowerCase() + ", falta " + formatCurrency(x.estado.pendiente) + ")";
+      }).concat(ajenasPorVencer.map(function (t) {
+        return t.nombre + " (" + dueBadgeLabel(nextDueInfo(t).daysUntil).toLowerCase() + ")";
+      })).join(", ");
       var cardAlert = document.createElement("div");
       cardAlert.className = "app-alert";
       var cardText = document.createElement("span");
@@ -44,8 +51,8 @@
       var cardBtn = document.createElement("button");
       cardBtn.type = "button";
       cardBtn.className = "btn btn-secondary btn-small";
-      cardBtn.textContent = "Ver tarjetas";
-      cardBtn.addEventListener("click", function () { activateTab("tarjetas"); });
+      cardBtn.textContent = "Ver deuda del mes";
+      cardBtn.addEventListener("click", function () { activateTab("deuda-tarjetas"); });
       cardAlert.appendChild(cardBtn);
       appAlertsEl.appendChild(cardAlert);
     }
