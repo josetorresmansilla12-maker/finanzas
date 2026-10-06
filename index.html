@@ -53,6 +53,13 @@
           <button type="button" id="compra-form-cerrar-btn" class="btn btn-outline btn-small">✕ Cerrar</button>
         </div>
         <p class="lede-hint">Solo el monto es obligatorio. Lo que no aplique a esta compra puedes saltarlo.</p>
+        <label class="repetir-ultima-toggle" for="compra-repetir-ultima">
+          <input type="checkbox" id="compra-repetir-ultima" />
+          <span class="repetir-ultima-textos">
+            <strong>🔁 Repetir datos de la última compra</strong>
+            <small id="compra-repetir-resumen">Déjalo marcado para registrar varias compras seguidas: tarjeta, quién compró, a quién se le debe y categoría quedan igual que en la última. La descripción y el monto quedan siempre en blanco.</small>
+          </span>
+        </label>
         <form id="compra-form" novalidate>
           <input type="hidden" id="compra-id" />
 
@@ -765,6 +772,7 @@
         <a href="#sync-section" class="config-indice-link">☁️ Sincronización</a>
         <a href="#config-tarjetas-section" class="config-indice-link">💳 Mis tarjetas</a>
         <a href="#personas-section" class="config-indice-link">👥 Personas</a>
+        <a href="#categorias-section" class="config-indice-link">🏷️ Categorías</a>
         <a href="#respaldo-section" class="config-indice-link">💾 Respaldos</a>
         <a href="#danger-zone-section" class="config-indice-link">⚠️ Zona de peligro</a>
       </nav>
@@ -914,6 +922,25 @@
           <button type="submit" class="btn btn-primary btn-small">Agregar persona</button>
         </form>
         <span class="error-msg" id="error-persona-nuevo-nombre"></span>
+      </section>
+
+      <!-- ---------- Categorías ---------- -->
+      <section class="table-section" id="categorias-section">
+        <div class="table-header">
+          <h2>🏷️ Editar categorías</h2>
+        </div>
+        <p class="lede-hint">Renombra una categoría escribiendo encima, cámbiala de grupo (el grupo decide si cuenta como gasto fijo, suscripción o compra variable), ocúltala para que no aparezca al registrar compras nuevas, o elimínala pasando sus compras a otra. Los cambios se aplican a todas tus compras, también a las antiguas.</p>
+        <div id="categorias-config-list"></div>
+        <form id="categoria-nueva-form" class="categoria-nueva-form" novalidate>
+          <input type="text" id="categoria-nueva-nombre" placeholder="Nueva categoría (ej: Gimnasio)" maxlength="40" />
+          <select id="categoria-nueva-grupo" aria-label="Grupo de la nueva categoría">
+            <option value="fijo">Gasto fijo</option>
+            <option value="suscripcion">Suscripción</option>
+            <option value="variable" selected>Compra variable</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-small">➕ Agregar categoría</button>
+        </form>
+        <span class="error-msg" id="error-categoria-nueva"></span>
       </section>
 
       <!-- ---------- Respaldos ---------- -->
@@ -1323,6 +1350,7 @@
   <script src="js/tabs.js"></script>
   <script src="js/trash.js"></script>
   <script src="js/personas.js"></script>
+  <script src="js/categorias.js"></script>
   <script src="js/tarjetas.js"></script>
   <script src="js/compras.js"></script>
   <script src="js/deudas.js"></script>

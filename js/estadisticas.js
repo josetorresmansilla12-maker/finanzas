@@ -48,16 +48,18 @@
   // en vez de barras agrupadas porque con varios meses x varias categorías
   // las barras se saturan visualmente; las líneas se leen mejor en ese caso.
 
-  var FIJO_CATEGORIES_FOR_TREND = CATEGORIAS.filter(function (c) { return c.group === "fijo"; });
-
+  // Se rearma en cada render porque las categorías se pueden editar en
+  // Configuración; lo que estaba marcado se conserva.
   function buildTrendCategoryPicker() {
+    var marcadas = new Set(Array.from(estadTrendCategoryPickerEl.querySelectorAll("input:checked")).map(function (cb) { return cb.value; }));
     estadTrendCategoryPickerEl.innerHTML = "";
-    FIJO_CATEGORIES_FOR_TREND.forEach(function (cat) {
+    CATEGORIAS.filter(function (c) { return c.group === "fijo"; }).forEach(function (cat) {
       var label = document.createElement("label");
       label.className = "trend-category-option";
       var checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = cat.id;
+      checkbox.checked = marcadas.has(cat.id);
       checkbox.addEventListener("change", renderTrendChart);
       label.appendChild(checkbox);
       label.appendChild(document.createTextNode(cat.label));
@@ -596,6 +598,7 @@
 
   function renderEstadisticas() {
     populateEstadPeriods();
+    buildTrendCategoryPicker();
 
     var compras = comprasDelPeriodo();
 
@@ -763,7 +766,10 @@
   if (quitarResaltadoBtn) quitarResaltadoBtn.addEventListener("click", quitarResaltado);
 
   function renderAll() {
+    // Por si llegaron categorías editadas desde el otro dispositivo.
+    recargarCategorias();
     renderPersonas();
+    renderCategoriasConfig();
     renderTarjetas();
     renderCompras();
     renderDeudas();

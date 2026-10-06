@@ -128,6 +128,90 @@
   });
   if (leerPreferenciaUI("compra_form_abierto", "0") === "1") abrirFormularioCompra(false);
 
+  // ---------- Repetir datos de la última compra ----------
+  //
+  // Para cargar varias compras seguidas del mismo tipo (ej. cinco compras
+  // de papá con mi tarjeta, que me debe): marcado, cada vez que el
+  // formulario queda en blanco se rellena con la tarjeta, quién compró,
+  // hogar/personal, a quién se le debe y la categoría de la última compra
+  // registrada. Nunca copia lo que cambia de una compra a otra:
+  // descripción, monto, fecha (queda hoy), cuotas ni notas.
+
+  var compraRepetirInput = document.getElementById("compra-repetir-ultima");
+  var compraRepetirResumen = document.getElementById("compra-repetir-resumen");
+  var COMPRA_REPETIR_AYUDA = compraRepetirResumen.textContent;
+
+  function ultimaCompraRegistrada() {
+    return loadCompras().slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); })[0] || null;
+  }
+
+  function seleccionarSiExiste(selectEl, valor) {
+    if (Array.from(selectEl.options).some(function (o) { return o.value === valor; })) {
+      selectEl.value = valor;
+      return true;
+    }
+    return false;
+  }
+
+  function rellenarConUltimaCompra() {
+    var ultima = ultimaCompraRegistrada();
+    if (!ultima) {
+      compraRepetirResumen.textContent = "Todavía no hay compras registradas: se usará la primera que guardes.";
+      return;
+    }
+
+    populateCategoriaSelect();
+    if (seleccionarSiExiste(compraCategoriaSelect, ultima.categoria)) {
+      compraCategoriaOtherInput.value = ultima.categoriaOtro || "";
+      updateCategoriaDependentFields();
+      if (ultima.auto) {
+        var autoRadio = compraAutoOptionsEl.querySelector('input[name="compra-auto"][value="' + ultima.auto + '"]');
+        if (autoRadio) autoRadio.checked = true;
+      }
+    }
+
+    populateMetodoPagoSelect(compraMetodoPagoSelect);
+    seleccionarSiExiste(compraMetodoPagoSelect, ultima.tarjetaId || ultima.metodoPago || "efectivo");
+
+    // En una compra compartida cada fila es de un participante distinto:
+    // de ahí solo sirve la tarjeta y la categoría, no las personas.
+    if (!ultima.compartidaId) {
+      populatePersonaSelects();
+      seleccionarSiExiste(compraCompradorSelect, ultima.comprador || YO.id);
+      compraCompradorOtroInput.value = ultima.compradorOtro || "";
+      compraCompradorOtroStatsInput.checked = !!ultima.mostrarEnEstad;
+      seleccionarSiExiste(compraAcreedorSelect, ultima.acreedor || "nadie");
+      compraPersonaInput.value = ultima.persona || "";
+      var hogarRadio = document.querySelector('input[name="compra-hogar"][value="' + (ultima.esHogar ? "si" : "no") + '"]');
+      if (hogarRadio) hogarRadio.checked = true;
+      var origenRadio = document.querySelector('input[name="compra-origen"][value="' + (ultima.origenDinero || "sueldo") + '"]');
+      if (origenRadio) origenRadio.checked = true;
+    }
+    updateDeudaDependentFields();
+    if (!ultima.compartidaId && ultima.sobreId) seleccionarSiExiste(compraSobreSelect, ultima.sobreId);
+    actualizarCicloHint();
+
+    var partes = [metodoPagoLabel(ultima)];
+    if (!ultima.compartidaId) {
+      partes.push("compró " + compradorNombre(ultima));
+      var deudaTxt = deudaTagText(ultima);
+      partes.push(deudaTxt.charAt(0).toLowerCase() + deudaTxt.slice(1));
+    }
+    partes.push(categoriaLabel(ultima));
+    compraRepetirResumen.textContent = "Rellenado como la última compra (\"" + compraDisplayName(ultima) + "\"): " +
+      partes.join(" · ") + ". Solo escribe qué fue y cuánto.";
+  }
+
+  compraRepetirInput.checked = leerPreferenciaUI("compra_repetir_ultima", "0") === "1";
+  compraRepetirInput.addEventListener("change", function () {
+    guardarPreferenciaUI("compra_repetir_ultima", compraRepetirInput.checked ? "1" : "0");
+    if (compraRepetirInput.checked) {
+      if (!editingCompraId && !editingCompartidaGrupoId) rellenarConUltimaCompra();
+    } else {
+      compraRepetirResumen.textContent = COMPRA_REPETIR_AYUDA;
+    }
+  });
+
   // Vista previa del monto con separador de miles mientras se escribe
   // ("45000" → "$45.000"), para no equivocarse en un cero.
   function actualizarMontoPreview() {
@@ -170,13 +254,18 @@
 
   // ---------- Categoría select ----------
 
-  function populateCategoriaSelect() {
+  // Las categorías ocultas no se ofrecen para compras nuevas, pero sí
+  // aparecen si es la que ya tiene la compra que se está editando (`idIncluir`)
+  // — si no, al editar se cambiaría de categoría sin querer.
+  function populateCategoriaSelect(idIncluir) {
     var previousValue = compraCategoriaSelect.value;
     compraCategoriaSelect.innerHTML = "";
     ["fijo", "suscripcion", "variable"].forEach(function (group) {
       var optgroup = document.createElement("optgroup");
       optgroup.label = CATEGORIA_GROUP_LABELS[group];
-      CATEGORIAS.filter(function (c) { return c.group === group; }).forEach(function (c) {
+      CATEGORIAS.filter(function (c) {
+        return c.group === group && (!c.oculta || c.id === idIncluir || c.id === previousValue);
+      }).forEach(function (c) {
         var opt = document.createElement("option");
         opt.value = c.id;
         opt.textContent = c.label;
@@ -260,7 +349,9 @@
 
   compraCategoriaSelect.addEventListener("change", function () {
     updateCategoriaDependentFields();
-    if (!editingCompraId) applyHogarDefault();
+    // Con "Repetir datos de la última compra" activo, "¿es para el hogar?"
+    // se copia de la última compra: cambiar la categoría no lo pisa.
+    if (!editingCompraId && !compraRepetirInput.checked) applyHogarDefault();
     updateDeudaDependentFields();
   });
 
@@ -1021,6 +1112,7 @@
     cancelEditCompraBtn.classList.add("hidden");
     actualizarMontoPreview();
     actualizarCicloHint();
+    if (compraRepetirInput.checked) rellenarConUltimaCompra();
   }
 
   function startEditCompra(id) {
@@ -1031,7 +1123,7 @@
     compraIdInput.value = id;
     document.querySelector('input[name="compra-type"][value="' + compra.tipo + '"]').checked = true;
     setCompraType(compra.tipo);
-    populateCategoriaSelect();
+    populateCategoriaSelect(compra.categoria);
     compraCategoriaSelect.value = compra.categoria;
     compraCategoriaOtherInput.value = compra.categoriaOtro || "";
     compraDescripcionInput.value = compra.descripcion || "";
@@ -1108,7 +1200,7 @@
 
     document.querySelector('input[name="compra-type"][value="unico"]').checked = true;
     setCompraType("unico");
-    populateCategoriaSelect();
+    populateCategoriaSelect(muestra.categoria);
     compraCategoriaSelect.value = muestra.categoria;
     compraCategoriaOtherInput.value = muestra.categoriaOtro || "";
     compraDescripcionInput.value = muestra.descripcion || "";
@@ -1753,6 +1845,7 @@
     renderMonthGroups(comprasMonthsWrapper, comprasEmptyState, filtered);
 
     populateMetodoPagoSelect(compraMetodoPagoSelect);
+    populateCategoriaSelect(); // por si se editaron las categorías
     refreshPersonasConocidas();
     // El selector de origen del dinero depende de si ya hay sueldo registrado.
     updateDeudaDependentFields();

@@ -18,9 +18,13 @@
 
   var MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
-  // Categorías de compra, agrupadas para las dos vistas pedidas: gastos fijos
-  // (incluye suscripciones, porque también son recurrentes) y compras variables.
-  var CATEGORIAS = [
+  // Categorías de compra por defecto, agrupadas para las dos vistas: gastos
+  // fijos (incluye suscripciones, porque también son recurrentes) y compras
+  // variables. El usuario las puede renombrar, cambiar de grupo, ocultar,
+  // eliminar o agregar nuevas en ⚙️ Configuración → Categorías: la lista
+  // activa vive en CATEGORIAS (ver recargarCategorias en storage.js).
+  var CATEGORIAS_KEY = "finanzas_categorias_v1";
+  var CATEGORIAS_DEFAULT = [
     { id: "agua", label: "Agua", group: "fijo" },
     { id: "luz", label: "Luz", group: "fijo" },
     { id: "gas", label: "Gas", group: "fijo" },
@@ -50,6 +54,11 @@
     { id: "autos", label: "Autos", group: "variable" },
     { id: "otro_variable", label: "Otra compra variable", group: "variable" }
   ];
+  var CATEGORIAS = CATEGORIAS_DEFAULT.slice();
+
+  // Las "otra/otro" piden un nombre libre al registrar la compra: se pueden
+  // renombrar u ocultar, pero no eliminar.
+  var CATEGORIAS_PROTEGIDAS = ["otro_fijo", "otra_suscripcion", "otro_variable"];
 
   var CATEGORIA_GROUP_LABELS = {
     fijo: "Gastos fijos",

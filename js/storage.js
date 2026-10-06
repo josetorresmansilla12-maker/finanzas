@@ -348,6 +348,35 @@
     }
   }
 
+  // ---------- Categorías editables ----------
+  //
+  // Si el usuario nunca las tocó, se usan las de fábrica. Si las editó, la
+  // lista guardada manda (orden, nombres, grupos y cuáles están ocultas).
+  // Se modifica el mismo arreglo CATEGORIAS (no se reemplaza) para que todo
+  // lo que ya lo tenga referenciado vea los cambios.
+  function recargarCategorias() {
+    var guardadas = loadFromStorage(CATEGORIAS_KEY).filter(function (c) {
+      return c && c.id && c.label && CATEGORIA_GROUP_LABELS[c.group];
+    });
+    var lista = guardadas.length > 0 ? guardadas : CATEGORIAS_DEFAULT;
+    CATEGORIAS.length = 0;
+    lista.forEach(function (c) {
+      CATEGORIAS.push({ id: c.id, label: c.label, group: c.group, oculta: !!c.oculta });
+    });
+  }
+
+  function saveCategorias(list) {
+    var ok = saveToStorage(CATEGORIAS_KEY, list);
+    recargarCategorias();
+    return ok;
+  }
+
+  function categoriasVisibles() {
+    return CATEGORIAS.filter(function (c) { return !c.oculta; });
+  }
+
+  recargarCategorias();
+
   function categoriaById(id) {
     return CATEGORIAS.find(function (c) { return c.id === id; }) || null;
   }

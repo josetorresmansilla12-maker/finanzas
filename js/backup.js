@@ -15,6 +15,7 @@
       juntas: loadJuntas(),
       distribucionSueldo: loadDistribucion(),
       fijosRecordatorios: allFijosRecordatorios(),
+      categorias: CATEGORIAS.map(function (c) { return Object.assign({}, c); }),
       exportedAt: new Date().toISOString()
     }, null, 2);
   }
@@ -46,6 +47,7 @@
         var importedSueldo = [];
         var importedJuntas = [];
         var importedFijosRecordatorios = {};
+        var importedCategorias = [];
 
         if (imported && typeof imported === "object") {
           if (Array.isArray(imported.tarjetas)) importedTarjetas = imported.tarjetas;
@@ -56,6 +58,7 @@
           if (Array.isArray(imported.sueldo)) importedSueldo = imported.sueldo;
           if (Array.isArray(imported.juntas)) importedJuntas = imported.juntas;
           if (imported.fijosRecordatorios && typeof imported.fijosRecordatorios === "object") importedFijosRecordatorios = imported.fijosRecordatorios;
+          if (Array.isArray(imported.categorias)) importedCategorias = imported.categorias;
         } else {
           throw new Error("Formato inválido");
         }
@@ -132,6 +135,18 @@
 
         var mergedFijosRecordatorios = Object.assign({}, allFijosRecordatorios(), importedFijosRecordatorios);
 
+        // Categorías: las de este dispositivo mandan (nombre, grupo); del
+        // respaldo solo se suman las que no existen acá, para que las compras
+        // importadas no queden con una categoría desconocida.
+        var mergedCategorias = CATEGORIAS.map(function (c) { return Object.assign({}, c); });
+        var categoriaIds = new Set(mergedCategorias.map(function (c) { return c.id; }));
+        importedCategorias.forEach(function (c) {
+          if (c && c.id && c.label && CATEGORIA_GROUP_LABELS[c.group] && !categoriaIds.has(c.id)) {
+            mergedCategorias.push({ id: c.id, label: c.label, group: c.group, oculta: !!c.oculta });
+            categoriaIds.add(c.id);
+          }
+        });
+
         pendingImportData = {
           mergedTarjetas: existingTarjetas.concat(importedTarjetas),
           mergedCompras: existingCompras.concat(importedCompras),
@@ -141,6 +156,8 @@
           mergedSueldo: existingSueldo.concat(importedSueldo),
           mergedJuntas: existingJuntas.concat(importedJuntas),
           mergedFijosRecordatorios: mergedFijosRecordatorios,
+          mergedCategorias: mergedCategorias,
+          nuevasCategorias: mergedCategorias.length > CATEGORIAS.length,
           counts: { tarjetas: importedTarjetas.length, compras: importedCompras.length, abonos: importedAbonos.length, sueldo: importedSueldo.length, juntas: importedJuntas.length }
         };
 
@@ -174,6 +191,7 @@
     savePersonasConocidas(d.mergedPersonas);
     saveMiembros(d.mergedMiembros);
     saveObjectToStorage(FIJOS_RECORDATORIOS_KEY, d.mergedFijosRecordatorios);
+    if (d.nuevasCategorias) saveCategorias(d.mergedCategorias);
     if (okTarjetas && okCompras && okAbonos && okSueldo && okJuntas) {
       renderAll();
       showToast("Se importaron " + d.counts.tarjetas + " tarjeta(s), " + d.counts.compras + " compra(s), " + d.counts.abonos + " devolución/abono(s), " + d.counts.sueldo + " ingreso(s) y " + d.counts.juntas + " junta(s).");
