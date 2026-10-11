@@ -29,6 +29,7 @@
 
   <nav class="tabs" id="tabs">
     <button type="button" class="tab-btn active" id="tab-compras-btn" data-tab="compras">Compras</button>
+    <button type="button" class="tab-btn" id="tab-avisos-btn" data-tab="avisos">🔔 Avisos<span class="tab-badge hidden" id="avisos-badge"></span></button>
     <button type="button" class="tab-btn" id="tab-vercompras-btn" data-tab="vercompras">Ver Compras</button>
     <button type="button" class="tab-btn" id="tab-deudas-btn" data-tab="deudas">Deudas</button>
     <button type="button" class="tab-btn" id="tab-deuda-tarjetas-btn" data-tab="deuda-tarjetas">Deuda Tarjetas</button>
@@ -44,267 +45,72 @@
     <!-- ===================== TAB: COMPRAS ===================== -->
     <section id="tab-compras" class="tab-panel">
       <div class="compras-top-bar">
-        <button type="button" id="compra-form-toggle-btn" class="btn btn-primary compra-form-toggle">➕ Registrar compra</button>
+        <button type="button" id="compra-form-toggle-btn" class="btn btn-primary compra-form-toggle">➕ Registrar compras</button>
       </div>
 
-      <section class="form-section compra-form-section hidden" id="compra-form-section">
+      <!-- Registro de compras por día: se elige el día y con qué se pagó, y
+           se agregan todas las compras de ese día de una vez (ver registro.js). -->
+      <section class="form-section registro-section hidden" id="compra-form-section">
         <div class="form-section-head">
-          <h2 id="form-title-compra">Registrar compra</h2>
+          <h2 id="registro-titulo">Registrar compras</h2>
           <button type="button" id="compra-form-cerrar-btn" class="btn btn-outline btn-small">✕ Cerrar</button>
         </div>
-        <p class="lede-hint">Solo el monto es obligatorio. Lo que no aplique a esta compra puedes saltarlo.</p>
-        <label class="repetir-ultima-toggle" for="compra-repetir-ultima">
-          <input type="checkbox" id="compra-repetir-ultima" />
-          <span class="repetir-ultima-textos">
-            <strong>🔁 Repetir datos de la última compra</strong>
-            <small id="compra-repetir-resumen">Déjalo marcado para registrar varias compras seguidas: tarjeta, quién compró, a quién se le debe y categoría quedan igual que en la última. La descripción y el monto quedan siempre en blanco.</small>
-          </span>
-        </label>
-        <form id="compra-form" novalidate>
-          <input type="hidden" id="compra-id" />
+        <p class="lede-hint" id="registro-subtitulo">Elige el día y con qué pagaste, agrega todas las compras de ese día y guárdalas juntas al final.</p>
 
-          <div class="form-subtitulo owner-field">🧾 La compra</div>
-
-          <div class="field">
-            <label for="compra-descripcion">Descripción <span class="label-hint">(opcional)</span></label>
-            <input type="text" id="compra-descripcion" placeholder="Ej: Supermercado Jumbo" />
+        <div class="registro-bloque registro-bloque-dia">
+          <div class="registro-bloque-head">
+            <span class="registro-num">1</span>
+            <h3>📅 ¿Qué día fueron las compras?</h3>
           </div>
-
-          <div class="field" id="compra-monto-field">
-            <label for="compra-monto">Monto total <span class="label-hint">(obligatorio)</span></label>
-            <input type="number" id="compra-monto" placeholder="Ej: 45000" min="0" step="1" required />
-            <span class="label-hint monto-preview" id="compra-monto-preview"></span>
-            <span class="error-msg" id="error-compra-monto"></span>
-          </div>
-
-          <div class="field">
-            <label for="compra-fecha">Fecha de la compra <span class="label-hint">(si la dejas vacía se usa hoy)</span></label>
-            <input type="date" id="compra-fecha" />
-            <span class="error-msg" id="error-compra-fecha"></span>
-          </div>
-
-          <div class="field">
-            <label for="compra-categoria">Categoría</label>
-            <select id="compra-categoria"></select>
-          </div>
-
-          <div class="field hidden" id="compra-categoria-other-field">
-            <label for="compra-categoria-other">Especifica la categoría <span class="label-hint">(opcional)</span></label>
-            <input type="text" id="compra-categoria-other" placeholder="Ej: Ferretería" />
-            <span class="error-msg" id="error-compra-categoria-other"></span>
-          </div>
-
-          <div class="field hidden" id="compra-auto-field">
-            <label>¿De qué auto es este gasto?</label>
-            <div class="radio-group" id="compra-auto-options"></div>
-          </div>
-
-          <div class="form-subtitulo owner-field">💳 Cómo se pagó</div>
-
-          <div class="field">
-            <label for="compra-metodo-pago">Método de pago <span class="label-hint">(opcional)</span></label>
-            <select id="compra-metodo-pago"></select>
-            <span class="ciclo-hint hidden" id="compra-ciclo-hint"></span>
-          </div>
-
-          <div class="field sale-type-field" id="compra-tipo-pago-field">
-            <label>Tipo de pago</label>
-            <div class="radio-group">
-              <label class="radio-option">
-                <input type="radio" name="compra-type" value="unico" checked />
-                Pago único
-              </label>
-              <label class="radio-option">
-                <input type="radio" name="compra-type" value="cuotas" />
-                En cuotas
-              </label>
+          <div class="registro-fila">
+            <input type="date" id="registro-fecha" class="registro-control" aria-label="Fecha de las compras" />
+            <div class="registro-chips" id="registro-fecha-chips">
+              <button type="button" class="vista-chip" data-dias="0">Hoy</button>
+              <button type="button" class="vista-chip" data-dias="1">Ayer</button>
+              <button type="button" class="vista-chip" data-dias="2">Anteayer</button>
             </div>
           </div>
+          <span class="registro-dia-texto" id="registro-dia-texto"></span>
+        </div>
 
-          <div class="field hidden" id="compra-cuotas-field">
-            <label for="compra-cuotas-count">Cantidad de cuotas</label>
-            <input type="number" id="compra-cuotas-count" placeholder="Ej: 3" min="2" step="1" />
-            <span class="error-msg" id="error-compra-cuotas-count"></span>
+        <div class="registro-bloque registro-bloque-pago">
+          <div class="registro-bloque-head">
+            <span class="registro-num">2</span>
+            <h3>💳 ¿Con qué pagaste?</h3>
           </div>
-
-          <div class="field hidden" id="compra-interes-field">
-            <label class="radio-option interes-checkbox-option">
-              <input type="checkbox" id="compra-tiene-interes" />
-              ¿Tiene interés?
-            </label>
+          <div class="registro-fila">
+            <select id="registro-metodo" class="registro-control" aria-label="Método de pago de las compras"></select>
           </div>
+          <span class="ciclo-hint hidden" id="registro-ciclo-hint"></span>
+          <span class="label-hint">Vale para todas las compras de abajo. Si alguna fue con otra tarjeta, cámbiala en "Más opciones" de esa compra.</span>
+        </div>
 
-          <div class="field">
-            <label for="compra-fecha-pago">Primer vencimiento <span class="label-hint">(opcional — si lo dejas vacío se calcula solo con el ciclo de la tarjeta)</span></label>
-            <input type="date" id="compra-fecha-pago" />
-            <button type="button" id="compra-fecha-pago-sugerir-btn" class="btn btn-outline btn-small">📅 Calcular con el ciclo de la tarjeta</button>
+        <div class="registro-bloque registro-bloque-compras">
+          <div class="registro-bloque-head">
+            <span class="registro-num">3</span>
+            <h3>🧾 ¿Qué compraste?</h3>
           </div>
-
-          <div class="field owner-field hidden" id="compra-suscripcion-field">
-            <label class="radio-option interes-checkbox-option">
-              <input type="checkbox" id="compra-suscripcion-repite" />
-              ¿Se repite mensualmente?
-            </label>
+          <label class="repetir-ultima-toggle" for="compra-repetir-ultima">
+            <input type="checkbox" id="compra-repetir-ultima" />
+            <span class="repetir-ultima-textos">
+              <strong>🔁 Repetir datos de la compra anterior</strong>
+              <small id="compra-repetir-resumen">Cada compra nueva parte con lo mismo que la anterior: de quién es, quién pagó y la categoría. Solo escribes qué fue y cuánto.</small>
+            </span>
+          </label>
+          <div id="registro-lista" class="registro-lista"></div>
+          <div class="registro-agregar" id="registro-agregar">
+            <button type="button" id="registro-agregar-btn" class="btn btn-outline">➕ Agregar otra compra</button>
+            <button type="button" id="registro-agregar-dividida-btn" class="btn btn-outline">🤝 Agregar compra dividida entre varios</button>
           </div>
+        </div>
 
-          <div class="field owner-field hidden" id="compra-suscripcion-detalle-field">
-            <label>¿Hasta cuándo se repite?</label>
-            <div class="radio-group">
-              <label class="radio-option">
-                <input type="radio" name="compra-suscripcion-modo" value="fecha" checked />
-                Hasta una fecha
-              </label>
-              <label class="radio-option">
-                <input type="radio" name="compra-suscripcion-modo" value="meses" />
-                Por cantidad de meses
-              </label>
-            </div>
-            <div class="suscripcion-detalle-inputs">
-              <input type="date" id="compra-suscripcion-hasta-fecha" />
-              <input type="number" id="compra-suscripcion-meses" placeholder="Ej: 6" min="2" step="1" class="hidden" />
-            </div>
-            <span class="error-msg" id="error-compra-suscripcion"></span>
+        <div class="registro-footer">
+          <span class="registro-total" id="registro-total"></span>
+          <div class="registro-footer-acciones">
+            <button type="button" id="registro-cancelar-btn" class="btn btn-secondary hidden">Cancelar edición</button>
+            <button type="button" id="registro-guardar-btn" class="btn btn-primary">💾 Guardar compras</button>
           </div>
-
-          <div class="field owner-field hidden" id="compra-fijo-recordatorio-field">
-            <label for="compra-fijo-fecha-pago">Fecha de pago de este gasto fijo <span class="label-hint">(opcional — queda guardada como recordatorio mensual)</span></label>
-            <input type="date" id="compra-fijo-fecha-pago" />
-            <span class="label-hint" id="compra-fijo-recordatorio-hint"></span>
-          </div>
-
-          <div class="form-subtitulo owner-field">👥 Quién compró y quién paga</div>
-
-          <div class="field">
-            <label>¿Esta compra se dividió entre varias personas?</label>
-            <div class="radio-group">
-              <label class="radio-option">
-                <input type="radio" name="compra-compartida" value="no" checked />
-                No
-              </label>
-              <label class="radio-option">
-                <input type="radio" name="compra-compartida" value="si" />
-                Sí — dividir entre varios
-              </label>
-            </div>
-            <p class="lede-hint hidden" id="compra-compartida-edit-notice"></p>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-compartida-field">
-            <div class="compartida-box">
-              <h3 class="compartida-titulo">🤝 Participantes de la compra</h3>
-              <p class="lede-hint">Agrega a cada persona y cuánto le corresponde pagar. El total se calcula solo. Si tú pagaste una parte, agrégate también.</p>
-
-              <div class="field">
-                <label for="compra-compartida-acreedor">¿Quién puso la plata?</label>
-                <select id="compra-compartida-acreedor"></select>
-                <span class="label-hint" id="compra-compartida-acreedor-hint"></span>
-              </div>
-
-              <div id="compra-participantes-list" class="participantes-list"></div>
-              <button type="button" id="compra-participante-add-btn" class="btn btn-outline btn-small">➕ Agregar participante</button>
-              <div class="compartida-total-row">
-                <span>Total de la compra</span>
-                <strong id="compra-compartida-total">$0</strong>
-              </div>
-              <span class="error-msg" id="error-compra-participantes"></span>
-
-              <h3 class="compartida-titulo">🧾 Detalle de artículos <span class="label-hint">(opcional)</span></h3>
-              <p class="lede-hint">Para especificar qué se compró y, si quieres, a quién le corresponde cada ítem.</p>
-              <div id="compra-items-list" class="items-list"></div>
-              <div class="compartida-items-actions">
-                <button type="button" id="compra-item-add-btn" class="btn btn-outline btn-small">➕ Agregar ítem</button>
-                <button type="button" id="compra-items-autocompletar-btn" class="btn btn-secondary btn-small">Calcular montos desde los ítems</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="field" id="compra-comprador-field">
-            <label for="compra-comprador">¿Quién realiza esta compra?</label>
-            <select id="compra-comprador"></select>
-            <span class="label-hint">Se administra en ⚙️ Configuración → Personas.</span>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-comprador-otro-field">
-            <label for="compra-comprador-otro">¿Quién? <span class="label-hint">(opcional — para alguien que no está en tu lista)</span></label>
-            <input type="text" id="compra-comprador-otro" list="personas-conocidas-list" placeholder="Ej: Un amigo, mi jefe…" />
-            <label class="radio-option interes-checkbox-option">
-              <input type="checkbox" id="compra-comprador-otro-stats" />
-              Llevar registro de su dinero en Estadísticas
-            </label>
-            <span class="label-hint">Déjalo sin marcar si solo quieres registrar la deuda y no un panel "Dinero de esta persona".</span>
-          </div>
-
-          <div class="field" id="compra-hogar-field">
-            <label>¿Esta compra es para el hogar?</label>
-            <div class="radio-group">
-              <label class="radio-option">
-                <input type="radio" name="compra-hogar" value="si" />
-                Sí — es un aporte al hogar
-              </label>
-              <label class="radio-option">
-                <input type="radio" name="compra-hogar" value="no" checked />
-                No — es un gasto personal
-              </label>
-            </div>
-            <span class="label-hint" id="compra-hogar-hint"></span>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-pago-terceros-field">
-            <label class="radio-option interes-checkbox-option">
-              <input type="checkbox" id="compra-pago-terceros" />
-              🧑 Estoy pagando esto por otra persona (me lo devolverá)
-            </label>
-            <span class="label-hint">Actívalo si compraste esto con tu propio dinero para que alguien más no se quedara sin plata — vas a poder indicar quién te lo debe y para cuándo.</span>
-          </div>
-
-          <div class="field" id="compra-acreedor-field">
-            <label for="compra-acreedor">¿A quién se le debe?</label>
-            <select id="compra-acreedor"></select>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-persona-field">
-            <label for="compra-persona">¿Quién me debe este monto? <span class="label-hint">(opcional)</span></label>
-            <input type="text" id="compra-persona" list="personas-conocidas-list" placeholder="Ej: Colun" />
-            <span class="error-msg" id="error-compra-persona"></span>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-fecha-acordada-field">
-            <label for="compra-fecha-acordada">Fecha de pago acordada <span class="label-hint">(opcional — si pactaron cuándo te pagará)</span></label>
-            <input type="date" id="compra-fecha-acordada" />
-            <span class="label-hint" id="compra-fecha-acordada-hint"></span>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-origen-field">
-            <label>¿Con qué dinero pagas esta compra?</label>
-            <div class="radio-group">
-              <label class="radio-option">
-                <input type="radio" name="compra-origen" value="sueldo" checked />
-                Con mi sueldo
-              </label>
-              <label class="radio-option">
-                <input type="radio" name="compra-origen" value="otro" />
-                Con otro dinero
-              </label>
-            </div>
-          </div>
-
-          <div class="field owner-field hidden" id="compra-sobre-field">
-            <label for="compra-sobre">¿De qué parte de tu sueldo sale? <span class="label-hint">(déjalo en automático si no quieres pensarlo)</span></label>
-            <select id="compra-sobre"></select>
-          </div>
-
-          <div class="form-subtitulo owner-field">📝 Notas</div>
-
-          <div class="field owner-field">
-            <label for="compra-notas">Notas <span class="label-hint">(opcional)</span></label>
-            <input type="text" id="compra-notas" placeholder="Ej: Compra de fin de mes" />
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" id="submit-compra-btn" class="btn btn-primary">Registrar compra</button>
-            <button type="button" id="cancel-edit-compra-btn" class="btn btn-secondary hidden">Cancelar</button>
-          </div>
-        </form>
+        </div>
       </section>
 
       <div class="compras-resaltado-banner hidden" id="compras-resaltado-banner">
@@ -359,6 +165,19 @@
 
         <div id="compras-months-wrapper"></div>
         <p id="compras-empty-state" class="empty-state hidden">Aún no hay compras registradas.</p>
+      </section>
+    </section>
+
+    <!-- ===================== TAB: AVISOS ===================== -->
+    <section id="tab-avisos" class="tab-panel hidden">
+      <section class="table-section">
+        <div class="table-header">
+          <h2>🔔 Importante: revisar</h2>
+        </div>
+        <p class="lede-hint">Lo pendiente desde hace tiempo o que vence pronto. Lo que marques acá como pagado o abonado se actualiza solo en toda la app (Deudas, Deuda Tarjetas, Estadísticas).</p>
+        <p class="avisos-resumen" id="avisos-resumen"></p>
+        <div id="avisos-lista" class="avisos-lista"></div>
+        <p id="avisos-vacio" class="empty-state hidden">✅ Todo al día: no hay nada pendiente que revisar.</p>
       </section>
     </section>
 
@@ -1360,10 +1179,12 @@
   <script src="js/informes.js"></script>
   <script src="js/calculadora.js"></script>
   <script src="js/juntas.js"></script>
+  <script src="js/registro.js"></script>
   <script src="js/pdf.js"></script>
   <script src="js/vercompras.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>
+  <script src="js/avisos.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/main.js"></script>
   <script>

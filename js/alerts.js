@@ -22,11 +22,29 @@
   function renderAppAlerts() {
     appAlertsEl.innerHTML = "";
 
-    // Aviso: tarjetas que vencen dentro de su ventana de aviso. Las propias
-    // solo avisan si su estado de cuenta todavía tiene saldo (si ya está
-    // pagado no hay nada que recordar), y dicen cuánto falta. Las tarjetas
-    // de otras personas avisan solo por fecha, como recordatorio.
-    var propiasPorVencer = tarjetasPorVencerConSaldo();
+    // Aviso resumen: si hay algo importante en la pestaña Avisos (tarjetas
+    // vencidas o por vencer, deudas antiguas, reembolsos sin abonar), se
+    // dice arriba en una sola línea con el acceso directo.
+    var avisos = calcularAvisos();
+    var importantes = avisos.filter(function (a) { return a.nivel !== "info"; });
+    if (importantes.length > 0) {
+      var cardAlert = document.createElement("div");
+      cardAlert.className = "app-alert" + (importantes.some(function (a) { return a.nivel === "urgente"; }) ? " app-alert-urgente" : "");
+      var cardText = document.createElement("span");
+      cardText.className = "app-alert-text";
+      cardText.textContent = "🔔 Tienes " + importantes.length + (importantes.length === 1 ? " cosa" : " cosas") + " por revisar: " +
+        importantes.slice(0, 2).map(function (a) { return a.titulo; }).join(" · ") + (importantes.length > 2 ? " · …" : "");
+      cardAlert.appendChild(cardText);
+      var cardBtn = document.createElement("button");
+      cardBtn.type = "button";
+      cardBtn.className = "btn btn-secondary btn-small";
+      cardBtn.textContent = "Ver avisos";
+      cardBtn.addEventListener("click", function () { activateTab("avisos"); });
+      cardAlert.appendChild(cardBtn);
+      appAlertsEl.appendChild(cardAlert);
+    }
+
+    // Tarjetas de otras personas: solo un recordatorio por fecha.
     var ajenasPorVencer = loadTarjetas().filter(function (t) {
       if (esTarjetaPersonal(t.id)) return false;
       var due = nextDueInfo(t);
@@ -34,27 +52,16 @@
       var aviso = t.diasAviso != null ? t.diasAviso : DEFAULT_DIAS_AVISO;
       return due.daysUntil <= aviso;
     });
-    var dueSoonCards = propiasPorVencer.concat(ajenasPorVencer);
-
-    if (dueSoonCards.length > 0) {
-      var names = propiasPorVencer.map(function (x) {
-        return x.tarjeta.nombre + " (" + dueBadgeLabel(x.dias).toLowerCase() + ", falta " + formatCurrency(x.estado.pendiente) + ")";
-      }).concat(ajenasPorVencer.map(function (t) {
+    if (ajenasPorVencer.length > 0) {
+      var ajenaAlert = document.createElement("div");
+      ajenaAlert.className = "app-alert app-alert-info";
+      var ajenaText = document.createElement("span");
+      ajenaText.className = "app-alert-text";
+      ajenaText.textContent = "💳 Recordatorio: " + ajenasPorVencer.map(function (t) {
         return t.nombre + " (" + dueBadgeLabel(nextDueInfo(t).daysUntil).toLowerCase() + ")";
-      })).join(", ");
-      var cardAlert = document.createElement("div");
-      cardAlert.className = "app-alert";
-      var cardText = document.createElement("span");
-      cardText.className = "app-alert-text";
-      cardText.textContent = "💳 " + (dueSoonCards.length === 1 ? "Tarjeta por pagar: " : "Tarjetas por pagar: ") + names;
-      cardAlert.appendChild(cardText);
-      var cardBtn = document.createElement("button");
-      cardBtn.type = "button";
-      cardBtn.className = "btn btn-secondary btn-small";
-      cardBtn.textContent = "Ver deuda del mes";
-      cardBtn.addEventListener("click", function () { activateTab("deuda-tarjetas"); });
-      cardAlert.appendChild(cardBtn);
-      appAlertsEl.appendChild(cardAlert);
+      }).join(", ");
+      ajenaAlert.appendChild(ajenaText);
+      appAlertsEl.appendChild(ajenaAlert);
     }
 
     // Aviso: gastos fijos con recordatorio mensual configurado (ej. "agua se

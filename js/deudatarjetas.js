@@ -49,6 +49,9 @@
   var cargoMenusAbiertos = new Set();
   var tarjetaBoxesPlegadas = new Set();
   var tarjetaBoxesAbiertasAntes = new Set();
+  // Modo "seleccionar varias" por tarjeta y compras marcadas en cada una.
+  var cargosSeleccionModo = new Set();
+  var cargosSeleccionados = {};
 
   // =========================================================
   // Reembolsos de terceros pendientes de abonar al banco
@@ -71,6 +74,36 @@
     return Math.round(loadAbonos().filter(function (a) {
       return a.tipo === "me_deben" && a.aplicarATarjetaId === tarjetaId;
     }).reduce(function (sum, a) { return sum + montoPendienteDeAplicarDeAbono(a); }, 0));
+  }
+
+  // Lo que de verdad falta pasar al banco: nunca más que lo que la
+  // tarjeta todavía debe. Si la tarjeta ya está al día, esa plata
+  // obviamente ya llegó al banco aunque no se haya anotado, así que no hay
+  // nada que avisar.
+  function reembolsosPorAbonarVisibles(tarjeta) {
+    var pool = pendienteAplicarBanco(tarjeta.id);
+    if (pool <= 0) return 0;
+    var hasta = periodoEnCurso(tarjeta).key;
+    var info = estadosCacheados(tarjeta);
+    var debe = info.keys.filter(function (k) { return k <= hasta; })
+      .reduce(function (s, k) { return s + info.porKey[k].pendiente; }, 0);
+    return Math.round(Math.min(pool, debe));
+  }
+
+  // "Ya lo aboné": da por pasada al banco toda la plata de reembolsos de
+  // esa tarjeta, sin registrar un abono nuevo (ya se pagó por otro lado,
+  // por ejemplo al pagar el estado de cuenta completo).
+  function descartarReembolsosPendientes(tarjetaId) {
+    var abonos = loadAbonos();
+    var cambio = false;
+    abonos.forEach(function (a) {
+      if (a.tipo !== "me_deben" || a.aplicarATarjetaId !== tarjetaId || montoPendienteDeAplicarDeAbono(a) <= 0) return;
+      a.aplicadoAlBancoMonto = Number(a.amount) || 0;
+      a.aplicadoAlBanco = true;
+      a.aplicadoSinAbono = true;
+      cambio = true;
+    });
+    if (cambio && saveAbonos(abonos)) despuesDeGuardarTarjetas("Listo: esa plata se da por abonada a la tarjeta y el aviso desaparece.");
   }
 
   // Mutación EN MEMORIA (no guarda): descuenta `monto` del cupo de
@@ -330,6 +363,20 @@
     if (mensaje) showToast(mensaje);
   }
 
+  // Abono que paga (todo o parte de) un estado de cuenta. La plata que las
+  // personas te devolvieron por compras de ESE mes se considera incluida en
+  // el pago: sale del cupo de "reembolsos por abonar", para que el aviso no
+  // siga diciendo que falta pasarla al banco.
+  function abonoQuePagaEstado(abonos, e, monto, fecha, nota) {
+    var devueltas = e.cargos.filter(function (cargo) {
+      return cargoFueDevuelto(cargo) && !e.abonos.some(function (a) { return abonoCubreCompra(a, cargo.compra.id); });
+    }).reduce(function (s, cargo) { return s + cargo.monto; }, 0);
+    var origenes = devueltas > 0 ? consumirPendienteAplicarBancoEnMemoria(abonos, e.tarjeta.id, Math.min(devueltas, monto)) : [];
+    return nuevoAbonoTarjeta(e.tarjeta.id, e.key, monto, fecha, nota, {
+      origenMontos: origenes, origenReembolsos: origenes.map(function (o) { return o.id; })
+    });
+  }
+
   // Paga lo que falta del estado de cuenta de ese mes (no archiva nada:
   // las compras siguen en su mes, solo que ya cubiertas).
   function markTarjetaPagada(tarjetaId, periodoKey) {
@@ -346,7 +393,7 @@
         " y la deuda de " + mesLargo(key) + " quedará pagada.",
       function () {
         var abonos = loadAbonos();
-        abonos.push(nuevoAbonoTarjeta(tarjetaId, key, e.pendiente, todayStamp(), "Pago de la deuda de " + mesLargo(key)));
+        abonos.push(abonoQuePagaEstado(abonos, e, e.pendiente, todayStamp(), "Pago de la deuda de " + mesLargo(key)));
         if (saveAbonos(abonos)) despuesDeGuardarTarjetas("Deuda de " + mesLargo(key) + " marcada como pagada.");
       }
     );
@@ -364,7 +411,7 @@
       function () {
         var abonos = loadAbonos();
         atrasados.forEach(function (e) {
-          abonos.push(nuevoAbonoTarjeta(e.tarjeta.id, e.key, e.pendiente, e.periodo.vencimientoIso,
+          abonos.push(abonoQuePagaEstado(abonos, e, e.pendiente, e.periodo.vencimientoIso,
             "Pago de la deuda de " + mesLargo(e.key) + " (marcado al ponerse al día)"));
         });
         if (saveAbonos(abonos)) despuesDeGuardarTarjetas("Meses anteriores marcados como pagados.");
@@ -389,8 +436,9 @@
     if (saveAbonos(abonos)) despuesDeGuardarTarjetas("Abono a la deuda de " + mesLargo(periodoKey) + " registrado.");
   }
 
+  // La persona ya te devolvió ESTE cargo (la compra entera, o esta cuota).
   function cargoFueDevuelto(cargo) {
-    return !!cargo.compra.pagada && esMeDeben(cargo.compra);
+    return esMeDeben(cargo.compra) && cargoPersonaPagado(cargo);
   }
 
   function marcarCargoAbonado(cargo, tarjetaId) {
@@ -415,6 +463,96 @@
       abonos.splice(idx, 1);
     }
     if (saveAbonos(abonos)) despuesDeGuardarTarjetas("Abono quitado. La compra vuelve a quedar por pagar.");
+  }
+
+  function cargoPersonaPagado(cargo) {
+    var c = cargo.compra;
+    if (c.pagada) return true;
+    return cargo.cuotaIndex !== null && Array.isArray(c.cuotasPagadas) && !!c.cuotasPagadas[cargo.cuotaIndex];
+  }
+
+  // "Me las pagaron" para varias compras a la vez: cada persona queda con
+  // ese dinero registrado como recibido (igual que "Marcar pagada" en
+  // Deudas, una por una), usando primero la plata que ya te había dado sin
+  // asignar, para no contarla dos veces.
+  function marcarDevueltasEnLote(cargos, boxKey) {
+    var aplicables = cargos.filter(function (cargo) { return esMeDeben(cargo.compra) && !cargoPersonaPagado(cargo); });
+    var propias = cargos.length - aplicables.length;
+    if (!aplicables.length) {
+      showToast("Ninguna de las seleccionadas es una compra que te deban (o ya estaban pagadas).");
+      return;
+    }
+    var porPersona = {};
+    aplicables.forEach(function (cargo) {
+      var k = deudorKey(cargo.compra);
+      porPersona[k] = (porPersona[k] || 0) + cargo.monto;
+    });
+    var detalle = Object.keys(porPersona).map(function (k) { return deudorNombre(k) + " " + formatCurrency(porPersona[k]); }).join(", ");
+    pedirConfirmacionPago(
+      "Se registrará que te pagaron: " + detalle + "." +
+        (propias ? " (" + propias + " compra(s) seleccionada(s) son tuyas o ya estaban pagadas: no cambian.)" : ""),
+      function () {
+        var sinAsignar = {};
+        Object.keys(porPersona).forEach(function (k) { sinAsignar[k] = balanceMeDeben(k).sinAsignar; });
+        var compras = loadCompras();
+        var abonos = loadAbonos();
+        var ahora = Date.now();
+        aplicables.forEach(function (cargo, i) {
+          var c = compras.find(function (x) { return x.id === cargo.compra.id; });
+          if (!c) return;
+          var k = deudorKey(c);
+          var usar = Math.min(cargo.monto, sinAsignar[k] || 0);
+          sinAsignar[k] = (sinAsignar[k] || 0) - usar;
+          var falta = Math.round(cargo.monto - usar);
+          if (falta > 0) {
+            var registro = {
+              id: uid(), tipo: "me_deben", persona: k, amount: falta, date: todayStamp(), createdAt: ahora + i,
+              note: (cargo.cuotaIndex !== null ? "Cuota " + (cargo.cuotaIndex + 1) + " de: " : "Pago de: ") + compraDisplayName(c)
+            };
+            if (c.tarjetaId && esTarjetaPersonal(c.tarjetaId)) {
+              registro.aplicarATarjetaId = c.tarjetaId;
+              registro.aplicadoAlBanco = false;
+            }
+            abonos.push(registro);
+          }
+          if (cargo.cuotaIndex === null) c.pagada = true;
+          else {
+            if (!Array.isArray(c.cuotasPagadas)) c.cuotasPagadas = [];
+            c.cuotasPagadas[cargo.cuotaIndex] = true;
+          }
+        });
+        if (!saveAbonos(abonos) || !saveCompras(compras)) return;
+        if (cargosSeleccionados[boxKey]) cargosSeleccionados[boxKey].clear();
+        cargosSeleccionModo.delete(boxKey);
+        despuesDeGuardarTarjetas(aplicables.length + " compra(s) marcadas como pagadas por " + Object.keys(porPersona).map(deudorNombre).join(" y ") + ".");
+      }
+    );
+  }
+
+  // "Ya las aboné a la tarjeta" para varias compras: un solo abono por la
+  // suma, que las deja marcadas como abonadas en ese estado de cuenta.
+  function abonarCargosEnLote(tarjeta, e, cargos, boxKey) {
+    var pendientes = cargos.filter(function (cargo) {
+      var id = situacionCargo(cargo, e).id;
+      return id === "por-pagar" || id === "devuelta";
+    });
+    if (!pendientes.length) {
+      showToast("Las seleccionadas ya estaban abonadas o pagadas.");
+      return;
+    }
+    var suma = pendientes.reduce(function (s, cargo) { return s + cargo.monto; }, 0);
+    var desdeReembolsos = pendientes.filter(cargoFueDevuelto).reduce(function (s, cargo) { return s + cargo.monto; }, 0);
+    pedirConfirmacionPago(
+      "Se registrará un abono de " + formatCurrency(suma) + " a " + tarjetaLabel(tarjeta.id) + " (deuda de " + mesLargo(e.key) +
+        ") por " + pendientes.length + " compra(s).",
+      function () {
+        if (cargosSeleccionados[boxKey]) cargosSeleccionados[boxKey].clear();
+        cargosSeleccionModo.delete(boxKey);
+        registrarAbonoTarjeta(tarjeta.id, e.key, suma, todayStamp(),
+          "Abono de: " + pendientes.map(function (cargo) { return compraDisplayName(cargo.compra); }).join(", "),
+          pendientes.map(function (cargo) { return cargo.compra.id; }), desdeReembolsos);
+      }
+    );
   }
 
   function aplicarReembolsosABanco(tarjetaId, periodoKey, montoSolicitado) {
@@ -647,7 +785,7 @@
     if (c.archivado) return { id: "pagada", texto: "✅ Pagada", clase: "ok", abono: null };
     if (abonoPropio || c.aplicadoABanco) return { id: "abonada", texto: "✅ Abonada", clase: "ok", abono: abonoPropio };
     if (e.pendiente <= 0) return { id: "pagada", texto: "✅ Pagada", clase: "ok", abono: null };
-    if (c.pagada && esMeDeben(c)) return { id: "devuelta", texto: "💵 Te la devolvieron · falta abonar", clase: "aviso", abono: null };
+    if (cargoFueDevuelto(cargo)) return { id: "devuelta", texto: "💵 Te la devolvieron · falta abonar", clase: "aviso", abono: null };
     return { id: "por-pagar", texto: "⏳ Por pagar", clase: "pendiente", abono: null };
   }
 
@@ -681,7 +819,9 @@
     return "Nadie (gasto propio)";
   }
 
-  function buildCargoRow(cargo, e) {
+  // `sel` (opcional): modo "seleccionar varias" de su tarjeta. En ese modo
+  // tocar la fila la marca/desmarca en vez de abrir sus opciones.
+  function buildCargoRow(cargo, e, sel) {
     var c = cargo.compra;
     var sit = situacionCargo(cargo, e);
     var menuKey = c.id + "|" + cargo.periodoKey;
@@ -697,6 +837,18 @@
     row.title = "Toca para ver opciones";
 
     var descWrap = document.createElement("div");
+    var check = null;
+    if (sel && sel.activo) {
+      descWrap.className = "cargo-desc-con-check";
+      check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "cargo-check";
+      check.checked = sel.marcado;
+      check.tabIndex = -1;
+      check.setAttribute("aria-label", "Seleccionar " + compraDisplayName(c));
+      descWrap.appendChild(check);
+      row.classList.toggle("cargo-seleccionada", sel.marcado);
+    }
     var descTexto = document.createElement("span");
     descTexto.className = "cargo-desc-texto";
     descTexto.textContent = compraDisplayName(c);
@@ -773,9 +925,23 @@
       row.setAttribute("aria-expanded", String(abrir));
       if (abrir) cargoMenusAbiertos.add(menuKey); else cargoMenusAbiertos.delete(menuKey);
     }
-    row.addEventListener("click", toggleMenu);
+    function alTocar() {
+      if (sel && sel.activo) {
+        var marcado = sel.alternar();
+        check.checked = marcado;
+        row.classList.toggle("cargo-seleccionada", marcado);
+        return;
+      }
+      toggleMenu();
+    }
+    if (sel && sel.activo) {
+      menu.classList.add("hidden");
+      flecha.textContent = "";
+      row.title = "Toca para seleccionar";
+    }
+    row.addEventListener("click", alTocar);
     row.addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggleMenu(); }
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); alTocar(); }
     });
 
     return wrap;
@@ -971,14 +1137,15 @@
     }
 
     // Reembolsos ya recibidos que todavía no pasan al banco.
-    var pendienteAplicar = pendienteAplicarBanco(tarjeta.id);
+    var pendienteAplicar = reembolsosPorAbonarVisibles(tarjeta);
     if (pendienteAplicar > 0) {
       var callout = document.createElement("div");
       callout.className = "app-alert reembolsos-callout";
       var calloutText = document.createElement("span");
       calloutText.className = "app-alert-text";
       calloutText.textContent = "💰 Te devolvieron " + formatCurrency(pendienteAplicar) +
-        " por compras de esta tarjeta que aún no abonas al banco. ¿Cuánto de eso ya abonaste?";
+        " por compras de esta tarjeta y eso todavía no figura abonado al banco. Aparece porque marcaste compras como \"me la devolvieron\". " +
+        "Si ya pagaste esa plata a la tarjeta, toca \"Ya lo aboné\" y el aviso se va.";
       callout.appendChild(calloutText);
       var accion = document.createElement("div");
       accion.className = "app-alert-aplicar-accion";
@@ -996,6 +1163,12 @@
       aplicarBtn.textContent = "Abonar a la deuda de " + mesLargo(key);
       aplicarBtn.addEventListener("click", function () { aplicarReembolsosABanco(tarjeta.id, key, montoInput.value); });
       accion.appendChild(aplicarBtn);
+      var descartarBtn = document.createElement("button");
+      descartarBtn.type = "button";
+      descartarBtn.className = "btn btn-outline btn-small";
+      descartarBtn.textContent = "✓ Ya lo aboné (quitar aviso)";
+      descartarBtn.addEventListener("click", function () { descartarReembolsosPendientes(tarjeta.id); });
+      accion.appendChild(descartarBtn);
       callout.appendChild(accion);
       body.appendChild(callout);
     }
@@ -1021,17 +1194,90 @@
     body.appendChild(abonoForm);
 
     if (e.cargos.length > 0) {
+      var enSeleccion = cargosSeleccionModo.has(boxKey);
+      var marcados = cargosSeleccionados[boxKey] || (cargosSeleccionados[boxKey] = new Set());
+      var cargosOrdenados = e.cargos.slice().sort(function (a, b) { return String(b.compra.fecha).localeCompare(String(a.compra.fecha)); });
+      function claveCargo(cargo) { return cargo.compra.id + "|" + cargo.periodoKey; }
+
+      var subtFila = document.createElement("div");
+      subtFila.className = "cuota-subtitle-row";
       var subt = document.createElement("div");
       subt.className = "cuota-subtitle";
       subt.textContent = "🧾 Compras de este estado de cuenta (" + e.cargos.length + ")";
-      body.appendChild(subt);
+      subtFila.appendChild(subt);
+      var selBtn = document.createElement("button");
+      selBtn.type = "button";
+      selBtn.className = "btn btn-small " + (enSeleccion ? "btn-secondary" : "btn-outline");
+      selBtn.textContent = enSeleccion ? "✕ Terminar selección" : "☑️ Seleccionar varias";
+      selBtn.addEventListener("click", function () {
+        if (enSeleccion) { cargosSeleccionModo.delete(boxKey); marcados.clear(); }
+        else cargosSeleccionModo.add(boxKey);
+        renderDeudaTarjetas();
+      });
+      subtFila.appendChild(selBtn);
+      body.appendChild(subtFila);
+
+      var barra = null;
+      var barraTexto = null;
+      function actualizarBarra() {
+        if (!barra) return;
+        var sel = cargosOrdenados.filter(function (cargo) { return marcados.has(claveCargo(cargo)); });
+        var suma = sel.reduce(function (s, cargo) { return s + cargo.monto; }, 0);
+        barraTexto.textContent = sel.length === 0 ? "Toca las compras que quieres marcar"
+          : sel.length + (sel.length === 1 ? " seleccionada · " : " seleccionadas · ") + formatCurrency(suma);
+        barra.querySelectorAll(".btn-accion-lote").forEach(function (btn) { btn.disabled = sel.length === 0; });
+      }
+      if (enSeleccion) {
+        barra = document.createElement("div");
+        barra.className = "seleccion-barra";
+        barraTexto = document.createElement("span");
+        barraTexto.className = "seleccion-barra-texto";
+        barra.appendChild(barraTexto);
+        var acciones = document.createElement("div");
+        acciones.className = "seleccion-barra-acciones";
+        function accion(texto, clase, fn) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn btn-small " + clase;
+          btn.textContent = texto;
+          btn.addEventListener("click", fn);
+          acciones.appendChild(btn);
+          return btn;
+        }
+        accion("Marcar todas las por pagar", "btn-outline", function () {
+          cargosOrdenados.forEach(function (cargo) {
+            var id = situacionCargo(cargo, e).id;
+            if (id === "por-pagar" || id === "devuelta") marcados.add(claveCargo(cargo));
+          });
+          renderDeudaTarjetas();
+        });
+        accion("💵 Me las pagaron", "btn-primary btn-accion-lote", function () {
+          marcarDevueltasEnLote(cargosOrdenados.filter(function (cargo) { return marcados.has(claveCargo(cargo)); }), boxKey);
+        });
+        accion("💳 Ya las aboné a la tarjeta", "btn-secondary btn-accion-lote", function () {
+          abonarCargosEnLote(tarjeta, e, cargosOrdenados.filter(function (cargo) { return marcados.has(claveCargo(cargo)); }), boxKey);
+        });
+        barra.appendChild(acciones);
+        body.appendChild(barra);
+      }
 
       var lista = document.createElement("div");
       lista.className = "cargos-lista";
       lista.appendChild(buildCargosHeader());
-      e.cargos.slice().sort(function (a, b) { return String(b.compra.fecha).localeCompare(String(a.compra.fecha)); })
-        .forEach(function (cargo) { lista.appendChild(buildCargoRow(cargo, e)); });
+      cargosOrdenados.forEach(function (cargo) {
+        var clave = claveCargo(cargo);
+        lista.appendChild(buildCargoRow(cargo, e, {
+          activo: enSeleccion,
+          marcado: marcados.has(clave),
+          alternar: function () {
+            if (marcados.has(clave)) marcados.delete(clave); else marcados.add(clave);
+            actualizarBarra();
+            return marcados.has(clave);
+          }
+        }));
+      });
       body.appendChild(lista);
+      actualizarBarra();
     } else {
       var sin = document.createElement("p");
       sin.className = "empty-state";

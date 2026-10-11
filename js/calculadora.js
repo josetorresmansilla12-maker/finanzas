@@ -365,6 +365,25 @@
       sub.className = "informe-detalle-sub";
       sub.textContent = subPartes.join(" · ");
       tdDetalle.appendChild(sub);
+
+      // Compra dividida: qué le tocó a esta persona. Si no se anotaron
+      // ítems suyos, se dice explícitamente (y se puede escribir a mano
+      // antes de descargar el comprobante, igual que el nombre).
+      if (c.compartidaId) {
+        var nPersonas = (c.compartidaParticipantes || []).length || 1;
+        var propios = itemsDeCompra(c);
+        var itemsEl = document.createElement("div");
+        itemsEl.className = "informe-detalle-sub calc-titulo-editable";
+        itemsEl.contentEditable = "true";
+        itemsEl.spellcheck = false;
+        itemsEl.textContent = propios.length
+          ? "🧾 " + propios.map(function (it) {
+            if (!it.monto) return it.descripcion;
+            return it.descripcion + " (" + (it.paraTodos ? "su parte: " + formatCurrency(Math.round(it.monto / nPersonas)) : formatCurrency(it.monto)) + ")";
+          }).join(", ")
+          : "🧾 No se agregó ítem";
+        tdDetalle.appendChild(itemsEl);
+      }
       tr.appendChild(tdDetalle);
 
       var tdMonto = document.createElement("td");

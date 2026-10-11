@@ -278,3 +278,120 @@
       categoriasConfigList.appendChild(bloque);
     });
   }
+
+  // =========================================================
+  // SUGERENCIA AUTOMÁTICA DE CATEGORÍA
+  //
+  // Al escribir qué se compró, se sugieren hasta 3 categorías. Combina dos
+  // fuentes:
+  // 1. Lo que TÚ ya registraste: si antes anotaste "Jumbo" como
+  //    Supermercado, la próxima vez "Jumbo" sugiere Supermercado primero.
+  //    Es lo que más pesa, porque aprende de tu forma de anotar.
+  // 2. Palabras comunes (tiendas y productos típicos en Chile) para las
+  //    categorías de fábrica, para que funcione desde la primera compra.
+  // Las categorías "otra/otro" nunca se sugieren: son el último recurso.
+  // =========================================================
+
+  var PALABRAS_CATEGORIA = {
+    agua: ["agua potable", "aguas andinas", "esval", "essbio", "cuenta del agua"],
+    luz: ["luz", "enel", "cge", "chilquinta", "electricidad", "cuenta de la luz"],
+    gas: ["gas", "abastible", "lipigas", "gasco", "metrogas", "balon"],
+    gnc: ["gnc"],
+    bencina: ["bencina", "copec", "shell", "petrobras", "aramco", "combustible", "nafta", "petroleo", "diesel"],
+    internet: ["internet", "wom", "entel", "movistar", "claro", "fibra", "plan celular", "recarga"],
+    tv_cable: ["vtr", "directv", "tv cable", "cable"],
+    arriendo: ["arriendo", "gastos comunes", "dividendo", "condominio"],
+    supermercado: ["jumbo", "lider", "unimarc", "tottus", "santa isabel", "acuenta", "supermercado", "super", "mayorista", "almacen", "minimarket", "oxxo"],
+    carne: ["carne", "carniceria", "asado", "lomo", "posta", "costillar", "chuleta", "longaniza", "choripan", "vacuno", "cerdo"],
+    verduleria: ["verdura", "verduleria", "fruta", "feria", "tomate", "palta", "lechuga", "cebolla"],
+    pescaderia: ["pescado", "pescaderia", "marisco", "salmon", "reineta", "merluza"],
+    pollo: ["pollo", "pechuga", "trutro", "alitas"],
+    saco_papas: ["papas", "saco"],
+    farmacia: ["farmacia", "cruz verde", "salcobrand", "ahumada", "remedio", "medicamento", "pastilla", "paracetamol", "ibuprofeno"],
+    mascotas: ["mascota", "perro", "gato", "veterinario", "veterinaria", "alimento perro", "arena gato", "petshop"],
+    netflix: ["netflix"],
+    youtube: ["youtube"],
+    otra_suscripcion: [],
+    ropa: ["ropa", "polera", "polerón", "poleron", "pantalon", "jeans", "zapatilla", "zapato", "chaqueta", "parka", "calcetin", "zara", "h&m", "polo", "vestido", "falda", "bototo"],
+    tecnologia: ["celular", "audifono", "audifonos", "cargador", "cable usb", "notebook", "computador", "mouse", "teclado", "pendrive", "tablet", "pilas", "parlante", "monitor", "impresora", "tinta", "pc factory", "samsung", "iphone", "xiaomi"],
+    salud: ["medico", "doctor", "dentista", "consulta", "examen", "clinica", "kinesiologo", "psicologo", "lentes", "optica", "isapre", "fonasa", "bono"],
+    ocio: ["cine", "entrada", "concierto", "juego", "videojuego", "steam", "playstation", "bar", "cerveza", "copete", "carrete", "spotify", "disney", "prime video", "hbo", "max", "libro", "panorama"],
+    restaurante: ["pizza", "sushi", "completo", "hamburguesa", "burger", "mcdonald", "kfc", "uber eats", "rappi", "pedidosya", "pedidos ya", "restaurante", "restaurant", "cafe", "starbucks", "empanada", "almuerzo", "once", "comida", "delivery", "churrasco", "papas fritas", "helado"],
+    regalos: ["regalo", "cumpleaños", "cumpleanos", "navidad", "aniversario", "flores", "torta"],
+    autos: ["neumatico", "mecanico", "taller", "lavado auto", "peaje", "tag", "autopista", "estacionamiento", "revision tecnica", "permiso de circulacion", "seguro auto", "aceite", "repuesto", "uber", "didi", "cabify"],
+    otro_variable: []
+  };
+
+  function normalizarTexto(texto) {
+    return String(texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9&\s]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function palabrasDe(texto) {
+    return normalizarTexto(texto).split(" ").filter(function (w) { return w.length >= 3; });
+  }
+
+  // Índice de lo ya registrado: descripción completa → categorías, y cada
+  // palabra → categorías. Se rearma solo cuando cambian las compras.
+  var indiceSugerencias = null;
+  var indiceSugerenciasHuella = null;
+
+  function indiceDeHistorial() {
+    var raw = localStorage.getItem(COMPRAS_KEY) || "";
+    var huella = raw.length + "|" + raw.slice(-60);
+    if (indiceSugerencias && indiceSugerenciasHuella === huella) return indiceSugerencias;
+    var porFrase = {};
+    var porPalabra = {};
+    loadCompras().forEach(function (c) {
+      if (!c.descripcion || !c.categoria || CATEGORIAS_PROTEGIDAS.indexOf(c.categoria) !== -1) return;
+      var frase = normalizarTexto(c.descripcion);
+      porFrase[frase] = porFrase[frase] || {};
+      porFrase[frase][c.categoria] = (porFrase[frase][c.categoria] || 0) + 1;
+      palabrasDe(c.descripcion).forEach(function (w) {
+        porPalabra[w] = porPalabra[w] || {};
+        porPalabra[w][c.categoria] = (porPalabra[w][c.categoria] || 0) + 1;
+      });
+    });
+    indiceSugerencias = { porFrase: porFrase, porPalabra: porPalabra };
+    indiceSugerenciasHuella = huella;
+    return indiceSugerencias;
+  }
+
+  function sugerirCategorias(texto, maximo) {
+    var frase = normalizarTexto(texto);
+    if (frase.length < 3) return [];
+    var palabras = palabrasDe(texto);
+    var puntaje = {};
+    function sumar(id, pts) { puntaje[id] = (puntaje[id] || 0) + pts; }
+
+    var indice = indiceDeHistorial();
+    Object.keys(indice.porFrase[frase] || {}).forEach(function (id) { sumar(id, 12 * indice.porFrase[frase][id]); });
+    palabras.forEach(function (w) {
+      Object.keys(indice.porPalabra[w] || {}).forEach(function (id) { sumar(id, 3 * Math.min(indice.porPalabra[w][id], 5)); });
+    });
+
+    var fraseConEspacios = " " + frase + " ";
+    Object.keys(PALABRAS_CATEGORIA).forEach(function (id) {
+      PALABRAS_CATEGORIA[id].forEach(function (clave) {
+        var k = normalizarTexto(clave);
+        if (!k) return;
+        // Coincide la palabra completa, o el comienzo de una palabra
+        // ("zapatillas" encuentra "zapatilla", "pizzas" encuentra "pizza").
+        if (fraseConEspacios.indexOf(" " + k + " ") !== -1) sumar(id, 6);
+        else if (k.length >= 4 && fraseConEspacios.indexOf(" " + k) !== -1) sumar(id, 4);
+      });
+    });
+
+    // Categorías creadas por ti: se reconocen por su propio nombre.
+    CATEGORIAS.forEach(function (c) {
+      palabrasDe(c.label).forEach(function (w) {
+        if (w.length >= 4 && palabras.some(function (p) { return p.indexOf(w) === 0 || w.indexOf(p) === 0 && p.length >= 4; })) sumar(c.id, 5);
+      });
+    });
+
+    return Object.keys(puntaje)
+      .map(function (id) { return categoriaById(id); })
+      .filter(function (c) { return c && !c.oculta && CATEGORIAS_PROTEGIDAS.indexOf(c.id) === -1; })
+      .sort(function (a, b) { return puntaje[b.id] - puntaje[a.id]; })
+      .slice(0, maximo || 3);
+  }

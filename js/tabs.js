@@ -8,7 +8,7 @@
   // Juntas ya no es una pestaña aparte: vive como segundo modo dentro de la
   // Calculadora (ver mostrarModoCalculadora).
 
-  var TABS = ["compras", "vercompras", "deudas", "deuda-tarjetas", "estadisticas", "sueldo", "informes", "calculadora", "tarjetas"];
+  var TABS = ["compras", "avisos", "vercompras", "deudas", "deuda-tarjetas", "estadisticas", "sueldo", "informes", "calculadora", "tarjetas"];
 
   function tabBtn(tab) { return document.getElementById("tab-" + tab + "-btn"); }
   function tabPanel(tab) { return document.getElementById("tab-" + tab); }
@@ -25,6 +25,13 @@
     }
     TABS.forEach(function (t) { tabBtn(t).classList.toggle("active", t === tab); });
     showTabPanels(tab);
+    // En el teléfono la barra de pestañas se desliza: se centra la activa
+    // (solo en horizontal, sin mover la página).
+    var nav = document.getElementById("tabs");
+    var btn = tabBtn(tab);
+    if (nav.scrollWidth > nav.clientWidth) {
+      nav.scrollTo({ left: btn.offsetLeft - (nav.clientWidth - btn.offsetWidth) / 2, behavior: "smooth" });
+    }
 
     if (tab === "deudas") renderDeudas();
     if (tab === "deuda-tarjetas") renderDeudaTarjetas();
@@ -33,6 +40,7 @@
     if (tab === "informes") renderInformesFiltros();
     if (tab === "calculadora") { renderCalculadoraFiltros(); renderJuntasLista(); }
     if (tab === "vercompras") renderVerComprasFiltros();
+    if (tab === "avisos") renderAvisos();
   }
 
   TABS.forEach(function (t) {

@@ -228,9 +228,13 @@
   // meses que todavía no llegan son solo una agenda: no se muestran ni se
   // suman como gasto/deuda hasta que sea su mes. Así "van saliendo" solos mes
   // a mes y el total solo cuenta el mes en curso.
+  //
+  // Se compara por DÍA (no solo por mes): antes, un cargo del 28 aparecía
+  // ya el día 1 y quedaba siempre arriba de la lista, como si fuera la
+  // compra más reciente.
   function esCargoFuturo(compra) {
     if (!compra || !compra.recurrenceId) return false;
-    return monthKey(compra.fecha) > monthKey(todayStamp());
+    return String(compra.fecha) > todayStamp();
   }
 
   // Para el cargo activo de una suscripción (el del mes en curso), la fecha
@@ -239,8 +243,10 @@
   function suscripcionProximoCargoIso(compra) {
     if (!compra.recurrenceId) return null;
     if (compra.recurrenceIndex >= compra.recurrenceTotal) return null;
-    if (monthKey(compra.fecha) !== monthKey(todayStamp())) return null;
-    return addMonthsToIso(compra.fecha, 1);
+    var proximo = addMonthsToIso(compra.fecha, 1);
+    // Solo para el cargo vigente (el último que ya ocurrió).
+    if (compra.fecha > todayStamp() || proximo <= todayStamp()) return null;
+    return proximo;
   }
 
   // ---------- Clasificación hogar / personal ----------
@@ -412,6 +418,18 @@
   function compartidaParticipantesTexto(compra) {
     if (!compra.compartidaParticipantes) return "";
     return compra.compartidaParticipantes.map(function (p) { return p.nombre; }).join(", ");
+  }
+
+  // Ítems que le corresponden a ESTA persona dentro de una compra
+  // dividida: los asignados a ella y los compartidos por todos (o los que
+  // nunca se asignaron a nadie, en compras antiguas).
+  function itemsDeCompra(compra) {
+    if (!compra.items || !compra.items.length) return [];
+    var nombre = String(compradorNombre(compra)).trim().toLowerCase();
+    return compra.items.filter(function (it) {
+      if (it.paraTodos || !it.paraNombre) return true;
+      return String(it.paraNombre).trim().toLowerCase() === nombre;
+    });
   }
 
   function itemsResumenTexto(compra) {

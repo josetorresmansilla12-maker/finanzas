@@ -780,6 +780,7 @@
     renderCalculadoraFiltros();
     renderJuntasLista();
     renderVerComprasFiltros();
+    renderAvisos();
     renderAppAlerts();
     updateTrashCount();
   }
