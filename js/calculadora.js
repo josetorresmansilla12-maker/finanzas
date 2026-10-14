@@ -51,47 +51,164 @@
   // persona elegida arriba.
   var calcMostrarTodas = false;
 
+  // Atajos de la lista: solo divididas recientes, o todas las compras del
+  // último mes (de todas las personas).
+  var calcFiltroDivididas = false;
+  var calcModoUltimoMes = false;
+
+  var calcPersonaOtroInput = document.getElementById("calc-persona-otro");
+  var calcMarcarMesBtn = document.getElementById("calc-marcar-mes-btn");
+  var calcDivididasBtn = document.getElementById("calc-divididas-btn");
+  var calcUltimoMesBtn = document.getElementById("calc-ultimo-mes-btn");
+  var calcAtajoHint = document.getElementById("calc-atajo-hint");
+  var CALC_PERSONA_NUEVA = "__nueva__";
+
+  // Personas que no están en tu lista pero ya aparecen en alguna compra
+  // (como "otra persona" que compró, o a quien le prestaste plata), más los
+  // nombres que la app ya conoce. Clave: "otro::<nombre en minúsculas>".
+  function otrasPersonasConocidas() {
+    var vistas = {};
+    function agregar(nombre) {
+      nombre = String(nombre || "").trim();
+      if (!nombre) return;
+      var key = normalizeDeudorKey(nombre);
+      if (personaById(key)) return; // ya está en la lista de personas
+      var clave = "otro::" + nombre.toLowerCase();
+      if (!vistas[clave]) vistas[clave] = nombre;
+    }
+    loadCompras().forEach(function (c) {
+      if (c.comprador === COMPRADOR_OTRO.id) agregar(c.compradorOtro);
+      if (esMeDeben(c) && (c.comprador || YO.id) === YO.id) agregar(c.persona);
+    });
+    loadPersonasConocidas().forEach(agregar);
+    return Object.keys(vistas).sort(function (a, b) { return vistas[a].localeCompare(vistas[b]); })
+      .map(function (clave) { return { value: clave, label: vistas[clave] }; });
+  }
+
   function renderCalculadoraFiltros() {
     if (!calcPersonaSelect) return;
     var previousValue = calcPersonaSelect.value;
     calcPersonaSelect.innerHTML = "";
+    function opcion(parent, value, label) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      parent.appendChild(opt);
+    }
     // "Yo" va al final: el uso más común es cobrarle a otra persona, así que
     // el default (primera opción) sigue siendo un integrante del hogar. Se
     // agrega para poder revisar tus propias compras acá también — ej. las
     // que le debes a un tercero que puso la plata por una compra compartida.
-    loadMiembros().concat([YO]).forEach(function (p) {
-      var opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.nombre;
-      calcPersonaSelect.appendChild(opt);
-    });
+    var grupoLista = document.createElement("optgroup");
+    grupoLista.label = "Tu lista de personas";
+    loadMiembros().concat([YO]).forEach(function (p) { opcion(grupoLista, p.id, p.nombre); });
+    calcPersonaSelect.appendChild(grupoLista);
+    var otras = otrasPersonasConocidas();
+    if (otras.length) {
+      var grupoOtras = document.createElement("optgroup");
+      grupoOtras.label = "Otras personas que ya anotaste";
+      otras.forEach(function (o) { opcion(grupoOtras, o.value, o.label); });
+      calcPersonaSelect.appendChild(grupoOtras);
+    }
+    opcion(calcPersonaSelect, CALC_PERSONA_NUEVA, "✏️ Otra persona (escribir nombre)…");
     if (Array.from(calcPersonaSelect.options).some(function (o) { return o.value === previousValue; })) {
       calcPersonaSelect.value = previousValue;
     }
+    calcPersonaOtroInput.classList.toggle("hidden", calcPersonaSelect.value !== CALC_PERSONA_NUEVA);
+  }
+
+  // A quién se le cobra: { id, nombre } (el id de "otras personas" es su
+  // clave "otro::nombre"). Null si se eligió escribir un nombre y está vacío.
+  function personaSeleccionadaCalc() {
+    var v = calcPersonaSelect.value;
+    if (v === CALC_PERSONA_NUEVA) {
+      var nombre = calcPersonaOtroInput.value.trim();
+      if (!nombre) return null;
+      var registrada = personaById(normalizeDeudorKey(nombre));
+      if (registrada) return { id: registrada.id, nombre: registrada.nombre };
+      return { id: "otro::" + nombre.toLowerCase(), nombre: nombre };
+    }
+    if (v.indexOf("otro::") === 0) {
+      var op = calcPersonaSelect.options[calcPersonaSelect.selectedIndex];
+      return { id: v, nombre: op ? op.textContent : v.slice(6) };
+    }
+    var p = personaById(v);
+    return p ? { id: p.id, nombre: p.nombre } : null;
   }
 
   // Todo lo que se puede considerar "de" esta persona: lo que ella compró,
   // más lo que ya está marcado como que te debe aunque lo hayas comprado tú.
   function comprasDePersona(personaId) {
+    if (!personaId) return [];
+    var esOtra = personaId.indexOf("otro::") === 0;
+    var nombreOtra = esOtra ? personaId.slice(6) : null;
     return loadCompras().filter(function (c) {
       if (esCargoFuturo(c)) return false;
+      if (esOtra) {
+        if (compradorKey(c) === personaId) return true;
+        return esMeDeben(c) && String(deudorKey(c) || "").trim().toLowerCase() === nombreOtra;
+      }
       var esComprador = (c.comprador || YO.id) === personaId;
       var esDeudora = esMeDeben(c) && deudorKey(c) === personaId;
       return esComprador || esDeudora;
     });
   }
 
+  // ¿La compra cae en los últimos períodos de facturación? Con tarjeta propia
+  // se usa su ciclo real: el estado de cuenta que acaba de cerrar (el que se
+  // está pagando) y el que está en curso. Sin tarjeta propia (efectivo,
+  // débito, tarjeta de otra persona), desde el inicio del mes pasado.
+  function enUltimosPeriodos(c) {
+    var t = c.tarjetaId && esTarjetaPersonal(c.tarjetaId) ? tarjetaById(c.tarjetaId) : null;
+    if (t) return primerPeriodoKeyDeCompra(c, t) >= periodoCerradoMasReciente(t).key;
+    return c.fecha >= sumarMesesKey(monthKey(todayStamp()), -1) + "-01";
+  }
+
+  function textoUltimosPeriodos() {
+    var tarjetas = misTarjetas();
+    if (!tarjetas.length) return "desde el inicio del mes pasado";
+    var keys = {};
+    tarjetas.forEach(function (t) {
+      keys[periodoCerradoMasReciente(t).key] = true;
+      keys[periodoEnCurso(t).key] = true;
+    });
+    var lista = Object.keys(keys).sort().map(mesLargo);
+    return "deudas de tarjeta de " + (lista.length > 1 ? lista.slice(0, -1).join(", ") + " y " + lista[lista.length - 1] : lista[0]);
+  }
+
+  function actualizarAtajosUI() {
+    calcDivididasBtn.classList.toggle("btn-primary", calcFiltroDivididas);
+    calcDivididasBtn.classList.toggle("btn-outline", !calcFiltroDivididas);
+    calcUltimoMesBtn.classList.toggle("btn-primary", calcModoUltimoMes);
+    calcUltimoMesBtn.classList.toggle("btn-outline", !calcModoUltimoMes);
+    var partes = [];
+    if (calcFiltroDivididas) partes.push("🤝 Solo compras divididas de las " + textoUltimosPeriodos() + ".");
+    if (calcModoUltimoMes) partes.push("👥 Compras de todas las personas desde el " + formatDateDisplay(calcFechaDesdeInput.value) + " hasta hoy.");
+    calcAtajoHint.textContent = partes.join(" ") + (partes.length ? " Toca el botón otra vez para quitarlo." : "");
+    calcAtajoHint.classList.toggle("hidden", !partes.length);
+  }
+
+  function setMostrarTodas(valor) {
+    calcMostrarTodas = valor;
+    calcMostrarTodasBtn.classList.toggle("btn-primary", calcMostrarTodas);
+    calcMostrarTodasBtn.classList.toggle("btn-outline", !calcMostrarTodas);
+    calcMostrarTodasBtn.textContent = calcMostrarTodas
+      ? "Mostrando todas las compras — volver a solo esta persona"
+      : "Mostrar todas las compras";
+  }
+
   function comprasFiltradasCalc() {
-    var personaId = calcPersonaSelect.value;
     var termino = sinTildes(calcFilterTexto.value.trim());
     var desde = calcFechaDesdeInput.value;
     var hasta = calcFechaHastaInput.value;
     var soloMarcadas = calcSoloMarcadasInput.checked;
     var mostrarPagadas = calcMostrarPagadasInput.checked;
+    var persona = personaSeleccionadaCalc();
     var base = calcMostrarTodas
       ? loadCompras().filter(function (c) { return !esCargoFuturo(c); })
-      : comprasDePersona(personaId);
+      : comprasDePersona(persona ? persona.id : null);
     return base.filter(function (c) {
+      if (calcFiltroDivididas && (!c.compartidaId || !enUltimosPeriodos(c))) return false;
       if (soloMarcadas && !calcSeleccionadas.has(c.id)) return false;
       if (!mostrarPagadas && compraEstaPagada(c)) return false;
       if (!coincideBusqueda(c, termino)) return false;
@@ -286,6 +403,12 @@
     var visibles = comprasFiltradasCalc();
     calcListaEl.innerHTML = "";
     calcListaEmpty.classList.toggle("hidden", visibles.length !== 0);
+    var persona = personaSeleccionadaCalc();
+    calcListaEmpty.textContent = !persona && calcPersonaSelect.value === CALC_PERSONA_NUEVA
+      ? "Escribe el nombre de la persona arriba."
+      : !calcMostrarTodas && persona && comprasDePersona(persona.id).length === 0
+        ? persona.nombre + " no tiene compras a su nombre. Toca \"Mostrar todas las compras\" para elegir qué cobrarle."
+        : "No hay compras que calcen con este filtro.";
     visibles.forEach(function (c) { calcListaEl.appendChild(buildCalcItemRow(c)); });
     actualizarSeleccionResumen();
   }
@@ -294,16 +417,63 @@
     // Cambiar de persona limpia la selección: mezclar compras de dos
     // personas distintas en un mismo comprobante no tendría sentido.
     calcSeleccionadas.clear();
+    var escribir = calcPersonaSelect.value === CALC_PERSONA_NUEVA;
+    calcPersonaOtroInput.classList.toggle("hidden", !escribir);
+    if (escribir) calcPersonaOtroInput.focus();
     renderCalcLista();
   });
 
   calcMostrarTodasBtn.addEventListener("click", function () {
-    calcMostrarTodas = !calcMostrarTodas;
-    calcMostrarTodasBtn.classList.toggle("btn-primary", calcMostrarTodas);
-    calcMostrarTodasBtn.classList.toggle("btn-outline", !calcMostrarTodas);
-    calcMostrarTodasBtn.textContent = calcMostrarTodas
-      ? "Mostrando todas las compras — volver a solo esta persona"
-      : "Mostrar todas las compras";
+    setMostrarTodas(!calcMostrarTodas);
+    if (!calcMostrarTodas && calcModoUltimoMes) {
+      calcModoUltimoMes = false;
+      calcFechaDesdeInput.value = "";
+      calcFechaHastaInput.value = "";
+    }
+    actualizarAtajosUI();
+    renderCalcLista();
+  });
+
+  calcPersonaOtroInput.addEventListener("input", function () {
+    calcSeleccionadas.clear();
+    renderCalcLista();
+  });
+
+  // 📅 Marca todo lo de este mes calendario que se ve en la lista y que
+  // todavía no está pagado.
+  calcMarcarMesBtn.addEventListener("click", function () {
+    var mes = monthKey(todayStamp());
+    var delMes = comprasFiltradasCalc().filter(function (c) { return monthKey(c.fecha) === mes && !compraEstaPagada(c); });
+    if (!delMes.length) {
+      showToast("No hay compras de " + mesLargo(mes) + " por cobrar en la lista.");
+      return;
+    }
+    delMes.forEach(function (c) { calcSeleccionadas.add(c.id); });
+    renderCalcLista();
+    showToast("Marcadas " + delMes.length + (delMes.length === 1 ? " compra" : " compras") + " de " + mesLargo(mes) + ".");
+  });
+
+  // 🤝 Solo las compras divididas de los últimos períodos de facturación.
+  calcDivididasBtn.addEventListener("click", function () {
+    calcFiltroDivididas = !calcFiltroDivididas;
+    actualizarAtajosUI();
+    renderCalcLista();
+  });
+
+  // 👥 Todas las compras del último mes, de todas las personas (por
+  // ejemplo, para que alguien elija con qué quiere ayudar).
+  calcUltimoMesBtn.addEventListener("click", function () {
+    calcModoUltimoMes = !calcModoUltimoMes;
+    if (calcModoUltimoMes) {
+      setMostrarTodas(true);
+      calcFechaDesdeInput.value = addMonthsToIso(todayStamp(), -1);
+      calcFechaHastaInput.value = todayStamp();
+    } else {
+      setMostrarTodas(false);
+      calcFechaDesdeInput.value = "";
+      calcFechaHastaInput.value = "";
+    }
+    actualizarAtajosUI();
     renderCalcLista();
   });
 
@@ -452,10 +622,10 @@
   }
 
   calcGenerarBtn.addEventListener("click", function () {
-    var personaId = calcPersonaSelect.value;
-    var persona = personaById(personaId);
+    var persona = personaSeleccionadaCalc();
     if (!persona) {
-      showToast("Agrega primero una persona en ⚙️ Configuración → Personas.");
+      showToast("Escribe el nombre de la persona a la que le vas a cobrar.");
+      calcPersonaOtroInput.focus();
       return;
     }
     var compras = loadCompras().filter(function (c) { return calcSeleccionadas.has(c.id); })
@@ -471,10 +641,10 @@
     calcFechaHastaInput.value = "";
     calcSoloMarcadasInput.checked = false;
     calcMostrarPagadasInput.checked = false;
-    calcMostrarTodas = false;
-    calcMostrarTodasBtn.classList.remove("btn-primary");
-    calcMostrarTodasBtn.classList.add("btn-outline");
-    calcMostrarTodasBtn.textContent = "Mostrar todas las compras";
+    setMostrarTodas(false);
+    calcFiltroDivididas = false;
+    calcModoUltimoMes = false;
+    actualizarAtajosUI();
     calcVerDesgloseInput.checked = false;
     renderCalcLista();
     calcResultadoEl.innerHTML = "";

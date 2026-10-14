@@ -586,7 +586,7 @@
     var campoPrimerVenc = campo("Primer vencimiento (solo si el banco te dio meses sin pagar)", primerVenc, "hidden");
     var repetirMeses = inputNumero("reg-repetir-meses", "Ej: 12");
     repetirMeses.min = "2";
-    var campoRepetir = campo("🔁 Suscripción: se repite cada mes durante (meses)", repetirMeses, "hidden");
+    var campoRepetir = campo("🔁 Se repite cada mes durante (meses) — suscripciones, gimnasio…", repetirMeses, "hidden");
     var fechaAcordada = el("input", "reg-fecha-acordada");
     fechaAcordada.type = "date";
     var campoAcordada = campo("📅 Fecha acordada para que te/le paguen (opcional)", fechaAcordada, "hidden");
@@ -624,7 +624,9 @@
       var nCuotas = Number(cuotas.value) || 1;
       interesLabel.classList.toggle("hidden", nCuotas < 2);
       campoPrimerVenc.classList.toggle("hidden", nCuotas < 2);
-      campoRepetir.classList.toggle("hidden", categoria.grupo() !== "suscripcion" || !!registroEdicion);
+      // Cualquier compra puede repetirse cada mes (no solo las de categoría
+      // suscripción): así no se pierde la opción por la categoría elegida.
+      campoRepetir.classList.toggle("hidden", !!registroEdicion || nCuotas >= 2);
       campoRecordatorio.classList.toggle("hidden", categoria.grupo() !== "fijo");
       var p = personas.leer();
       var campos = personasACampos(p.duenio, p.pagador, p.debe);
@@ -633,7 +635,8 @@
       campoSueldo.classList.toggle("hidden", !(esMio && loadSueldo().length > 0));
 
       var otros = [metodoOverride.value ? "otra tarjeta" : null, fechaOverride.value ? "otra fecha" : null,
-        nCuotas >= 2 ? nCuotas + " cuotas" : null, nota.value.trim() ? "nota" : null].filter(Boolean);
+        nCuotas >= 2 ? nCuotas + " cuotas" : null, Number(repetirMeses.value) >= 2 ? "se repite " + repetirMeses.value + " meses" : null,
+        nota.value.trim() ? "nota" : null].filter(Boolean);
       masSummary.textContent = otros.length
         ? "⚙️ Más opciones · " + otros.join(", ")
         : "⚙️ Más opciones (cuotas, otra tarjeta, otra fecha, nota…)";
@@ -670,7 +673,7 @@
       personas.setPagadorPorDefecto(pagadorPorMetodo(metodo()));
       actualizarOpciones();
     });
-    [fechaOverride, cuotas, nota].forEach(function (i) { i.addEventListener("input", actualizarOpciones); });
+    [fechaOverride, cuotas, nota, repetirMeses].forEach(function (i) { i.addEventListener("input", actualizarOpciones); });
 
     refrescarMetodoOverride();
     refrescarSueldo();
@@ -773,7 +776,7 @@
       }, metodoACampos(metodo()), campos);
 
       var meses = Number(repetirMeses.value) || 0;
-      var repetir = !registroEdicion && categoria.grupo() === "suscripcion" && meses >= 2;
+      var repetir = !registroEdicion && nCuotas < 2 && meses >= 2;
       var recordatorioDia = categoria.grupo() === "fijo" ? Number(recordatorio.value) || null : null;
       return { compras: [base], repetirMeses: repetir ? Math.min(meses, 60) : 0, recordatorio: recordatorioDia };
     };

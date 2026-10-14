@@ -487,12 +487,17 @@
 
     Object.keys(byMonth).sort().reverse().forEach(function (key, i) {
       // Siempre por fecha, de la más reciente a la más antigua; si dos son
-      // del mismo día, primero la última que se anotó.
+      // del mismo día, primero la última que se anotó. Los cobros de este
+      // mes que todavía no ocurren (ej. una suscripción que se cobra el 28)
+      // van al final, aparte, para no quedar arriba como si fueran lo último.
+      var hoy = todayStamp();
       var items = byMonth[key].sort(function (a, b) {
         return String(b.fecha).localeCompare(String(a.fecha)) || (b.createdAt || 0) - (a.createdAt || 0);
       });
       var total = items.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
-      var filas = agruparParaTabla(items);
+      var programados = items.filter(function (c) { return String(c.fecha) > hoy; }).reverse();
+      var filas = agruparParaTabla(items.filter(function (c) { return String(c.fecha) <= hoy; }));
+      var filasProgramadas = agruparParaTabla(programados);
 
       var details = document.createElement("details");
       details.className = "month-group";
@@ -503,7 +508,8 @@
       titleSpan.textContent = monthLabel(key);
       var metaSpan = document.createElement("span");
       metaSpan.className = "month-meta";
-      var metaTexto = filas.length + (filas.length === 1 ? " compra · " : " compras · ") + formatCurrency(total);
+      var cantidad = filas.length + filasProgramadas.length;
+      var metaTexto = cantidad + (cantidad === 1 ? " compra · " : " compras · ") + formatCurrency(total);
       // En la vista "todas" ayuda ver de un vistazo cuánto fue fijo y cuánto
       // variable dentro del mismo mes.
       if (comprasVista === "todas") {
@@ -526,13 +532,24 @@
       thead.innerHTML = "<tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Pagado con</th><th>Cuotas</th><th>Compró</th><th>Deuda</th><th class=\"col-value\">Monto</th><th class=\"col-actions\">Acciones</th></tr>";
       table.appendChild(thead);
       var tbody = document.createElement("tbody");
-      filas.forEach(function (fila) {
+      function pintarFila(fila) {
         if (fila.tipo === "grupo") {
           buildCompraGroupRow(fila.miembros).forEach(function (tr) { tbody.appendChild(tr); });
         } else {
           tbody.appendChild(buildCompraRow(fila.compra));
         }
-      });
+      }
+      filas.forEach(pintarFila);
+      if (filasProgramadas.length) {
+        var sep = document.createElement("tr");
+        sep.className = "compras-programados-sep";
+        var sepTd = document.createElement("td");
+        sepTd.colSpan = 9;
+        sepTd.textContent = "📅 Programados este mes (todavía no se cobran)";
+        sep.appendChild(sepTd);
+        tbody.appendChild(sep);
+        filasProgramadas.forEach(pintarFila);
+      }
       table.appendChild(tbody);
       tableWrap.appendChild(table);
       details.appendChild(tableWrap);

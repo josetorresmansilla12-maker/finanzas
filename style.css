@@ -4773,3 +4773,69 @@ select.registro-control {
     grid-column: 1 / -1;
   }
 }
+
+/* ---------- Calculadora: atajos ---------- */
+.calc-atajos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.calc-atajos-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.calc-atajo-hint {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  background: var(--color-tint);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+#calc-persona-otro {
+  flex: 1 1 200px;
+}
+
+/* Compras: separador de cobros programados del mes */
+tr.compras-programados-sep td {
+  background: #eef0fb;
+  color: #3d3fa8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+@media (max-width: 760px) {
+  .compras-tabla tbody tr.compras-programados-sep {
+    display: block;
+    padding: 0;
+  }
+  .compras-tabla tbody tr.compras-programados-sep td {
+    display: block;
+    padding: 8px 12px;
+  }
+}
+
+/* Ver compras: proyección de deudas futuras */
+.vercompras-futuras {
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 2px dashed #c9c3ef;
+  border-radius: 12px;
+  background: #f8f7ff;
+}
+
+.vercompras-futuras-head {
+  font-weight: 800;
+  color: #3d3fa8;
+  margin-bottom: 10px;
+}
+
+.month-group-futuro summary {
+  background: #eef0fb;
+}

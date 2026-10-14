@@ -897,9 +897,10 @@
             <label for="calc-persona" class="calc-paso-titulo">¿A quién le vas a cobrar?</label>
             <div class="calc-fila">
               <select id="calc-persona" class="calc-control"></select>
+              <input type="text" id="calc-persona-otro" class="calc-control hidden" list="personas-conocidas-list" placeholder="Nombre de la persona" aria-label="Nombre de la persona a la que le cobras" />
               <button type="button" id="calc-mostrar-todas-btn" class="btn btn-outline btn-small calc-control">Mostrar todas las compras</button>
             </div>
-            <span class="label-hint">"Mostrar todas" sirve para cobrarle algo que quedó registrado a nombre de otra persona.</span>
+            <span class="label-hint">Puedes elegir a cualquier persona: las de tu lista, las que ya anotaste alguna vez, o escribir un nombre nuevo con "Otra persona". "Mostrar todas" sirve para cobrarle algo que quedó registrado a nombre de otra persona.</span>
           </div>
         </div>
 
@@ -912,6 +913,13 @@
               <label class="calc-fecha-control"><span>Desde</span><input type="date" id="calc-fecha-desde" class="calc-control" /></label>
               <label class="calc-fecha-control"><span>Hasta</span><input type="date" id="calc-fecha-hasta" class="calc-control" /></label>
             </div>
+            <div class="calc-atajos">
+              <span class="calc-atajos-label">Atajos:</span>
+              <button type="button" id="calc-marcar-mes-btn" class="btn btn-outline btn-small">📅 Marcar el presente mes</button>
+              <button type="button" id="calc-divididas-btn" class="btn btn-outline btn-small">🤝 Mostrar compras divididas de los últimos períodos de facturación</button>
+              <button type="button" id="calc-ultimo-mes-btn" class="btn btn-outline btn-small">👥 Mostrar todas las compras del último mes</button>
+            </div>
+            <span class="label-hint calc-atajo-hint hidden" id="calc-atajo-hint"></span>
             <div class="calc-fila">
               <label class="radio-option calc-solo-marcadas-option">
                 <input type="checkbox" id="calc-solo-marcadas" />
@@ -1078,7 +1086,12 @@
       <section class="table-section">
         <div class="table-header">
           <h2>🗓️ Compras mes a mes</h2>
+          <div class="table-actions">
+            <button type="button" id="vercompras-futuras-btn" class="btn btn-outline btn-small hidden">🔮 Ver deudas futuras</button>
+          </div>
         </div>
+        <p class="lede-hint">Hasta el mes actual. Lo que viene después (suscripciones programadas y cuotas que faltan) se ve con "Ver deudas futuras".</p>
+        <div id="vercompras-futuras" class="vercompras-futuras hidden"></div>
         <p id="vercompras-empty" class="empty-state hidden">Esta persona no tiene compras registradas.</p>
         <div id="vercompras-lista"></div>
       </section>

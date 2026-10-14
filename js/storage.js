@@ -227,14 +227,12 @@
   // Una suscripción de N meses se guarda como N cargos, uno por mes, pero los
   // meses que todavía no llegan son solo una agenda: no se muestran ni se
   // suman como gasto/deuda hasta que sea su mes. Así "van saliendo" solos mes
-  // a mes y el total solo cuenta el mes en curso.
-  //
-  // Se compara por DÍA (no solo por mes): antes, un cargo del 28 aparecía
-  // ya el día 1 y quedaba siempre arriba de la lista, como si fuera la
-  // compra más reciente.
+  // a mes y el total solo cuenta el mes en curso. Los del mes en curso SÍ
+  // se muestran aunque su día no llegue (en la lista van al final, como
+  // "programados").
   function esCargoFuturo(compra) {
     if (!compra || !compra.recurrenceId) return false;
-    return String(compra.fecha) > todayStamp();
+    return monthKey(compra.fecha) > monthKey(todayStamp());
   }
 
   // Para el cargo activo de una suscripción (el del mes en curso), la fecha
@@ -243,10 +241,8 @@
   function suscripcionProximoCargoIso(compra) {
     if (!compra.recurrenceId) return null;
     if (compra.recurrenceIndex >= compra.recurrenceTotal) return null;
-    var proximo = addMonthsToIso(compra.fecha, 1);
-    // Solo para el cargo vigente (el último que ya ocurrió).
-    if (compra.fecha > todayStamp() || proximo <= todayStamp()) return null;
-    return proximo;
+    if (monthKey(compra.fecha) !== monthKey(todayStamp())) return null;
+    return addMonthsToIso(compra.fecha, 1);
   }
 
   // ---------- Clasificación hogar / personal ----------

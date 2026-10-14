@@ -63,10 +63,107 @@
     });
   }
 
+  var verComprasFuturasBtn = document.getElementById("vercompras-futuras-btn");
+  var verComprasFuturasEl = document.getElementById("vercompras-futuras");
+  var verComprasMostrarFuturas = false;
+
+  // Proyección de lo que viene después del mes actual: cobros ya
+  // programados (suscripciones de varios meses) y las cuotas que faltan de
+  // compras en cuotas. Ordenado del mes más cercano al más lejano.
+  function deudasFuturasDe(todas) {
+    var mesActual = monthKey(todayStamp());
+    var items = [];
+    todas.forEach(function (c) {
+      if (monthKey(c.fecha) > mesActual) {
+        items.push({ mes: monthKey(c.fecha), fecha: c.fecha, texto: compraDisplayName(c),
+          tipo: c.recurrenceId ? "Suscripción (" + c.recurrenceIndex + "/" + c.recurrenceTotal + ")" : "Compra programada",
+          metodo: metodoPagoLabel(c), monto: Number(c.monto) || 0 });
+        return;
+      }
+      if (c.tipo !== "cuotas" || c.pagada) return;
+      buildCuotaSchedule(c).forEach(function (cuota) {
+        if (cuota.paid || monthKey(cuota.dueIso) <= mesActual) return;
+        items.push({ mes: monthKey(cuota.dueIso), fecha: cuota.dueIso, texto: compraDisplayName(c),
+          tipo: "Cuota " + (cuota.index + 1) + "/" + c.cuotas, metodo: metodoPagoLabel(c), monto: cuota.amount });
+      });
+    });
+    return items;
+  }
+
+  function renderDeudasFuturas(items) {
+    verComprasFuturasEl.innerHTML = "";
+    var porMes = {};
+    items.forEach(function (it) { (porMes[it.mes] = porMes[it.mes] || []).push(it); });
+    var meses = Object.keys(porMes).sort();
+    var totalGeneral = items.reduce(function (s, it) { return s + it.monto; }, 0);
+
+    var head = document.createElement("div");
+    head.className = "vercompras-futuras-head";
+    head.textContent = "🔮 Deudas futuras: " + formatCurrency(totalGeneral) + " en " + meses.length + (meses.length === 1 ? " mes" : " meses");
+    verComprasFuturasEl.appendChild(head);
+
+    meses.forEach(function (key) {
+      var lista = porMes[key].sort(function (a, b) { return String(a.fecha).localeCompare(String(b.fecha)); });
+      var totalMes = lista.reduce(function (s, it) { return s + it.monto; }, 0);
+      var details = document.createElement("details");
+      details.className = "month-group month-group-futuro";
+      var summary = document.createElement("summary");
+      var titleSpan = document.createElement("span");
+      titleSpan.textContent = monthLabel(key);
+      var metaSpan = document.createElement("span");
+      metaSpan.className = "month-meta";
+      metaSpan.textContent = lista.length + (lista.length === 1 ? " cobro · " : " cobros · ") + formatCurrency(totalMes);
+      summary.appendChild(titleSpan);
+      summary.appendChild(metaSpan);
+      details.appendChild(summary);
+      var wrap = document.createElement("div");
+      wrap.className = "table-wrapper";
+      var table = document.createElement("table");
+      table.innerHTML = "<thead><tr><th>Fecha</th><th>Qué es</th><th>Tipo</th><th>Pagado con</th><th class=\"col-value\">Monto</th></tr></thead>";
+      var tbody = document.createElement("tbody");
+      lista.forEach(function (it) {
+        var tr = document.createElement("tr");
+        [formatDateDisplay(it.fecha), it.texto, it.tipo, it.metodo].forEach(function (t) {
+          var td = document.createElement("td");
+          td.textContent = t;
+          tr.appendChild(td);
+        });
+        var tdM = document.createElement("td");
+        tdM.className = "col-value";
+        tdM.textContent = formatCurrency(it.monto);
+        tr.appendChild(tdM);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      details.appendChild(wrap);
+      verComprasFuturasEl.appendChild(details);
+    });
+  }
+
+  verComprasFuturasBtn.addEventListener("click", function () {
+    verComprasMostrarFuturas = !verComprasMostrarFuturas;
+    renderVerCompras();
+  });
+
   function renderVerCompras() {
     if (!verComprasPersonaSelect) return;
     var value = verComprasPersonaSelect.value;
-    var compras = value ? comprasDeSeleccionVerCompras(value) : [];
+    var todas = value ? comprasDeSeleccionVerCompras(value) : [];
+    // Solo hasta el mes actual: lo programado para meses siguientes (ej.
+    // una suscripción anotada por un año) va en "Ver deudas futuras".
+    var mesActual = monthKey(todayStamp());
+    var compras = todas.filter(function (c) { return monthKey(c.fecha) <= mesActual; });
+
+    var futuras = deudasFuturasDe(todas);
+    var mesesFuturos = new Set(futuras.map(function (it) { return it.mes; })).size;
+    verComprasFuturasBtn.classList.toggle("hidden", futuras.length === 0);
+    verComprasFuturasBtn.textContent = verComprasMostrarFuturas ? "Ocultar deudas futuras"
+      : "🔮 Ver deudas futuras (" + mesesFuturos + (mesesFuturos === 1 ? " mes)" : " meses)");
+    verComprasFuturasBtn.classList.toggle("btn-primary", verComprasMostrarFuturas);
+    verComprasFuturasBtn.classList.toggle("btn-outline", !verComprasMostrarFuturas);
+    verComprasFuturasEl.classList.toggle("hidden", !verComprasMostrarFuturas || futuras.length === 0);
+    if (verComprasMostrarFuturas && futuras.length) renderDeudasFuturas(futuras);
 
     var total = compras.reduce(function (sum, c) { return sum + (Number(c.monto) || 0); }, 0);
     verComprasTotalEl.textContent = formatCurrency(total);

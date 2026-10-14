@@ -289,7 +289,8 @@
   //    Es lo que más pesa, porque aprende de tu forma de anotar.
   // 2. Palabras comunes (tiendas y productos típicos en Chile) para las
   //    categorías de fábrica, para que funcione desde la primera compra.
-  // Las categorías "otra/otro" nunca se sugieren: son el último recurso.
+  // "Otro gasto fijo" y "Otra compra variable" nunca se sugieren (son el
+  // último recurso); "Otra suscripción" sí, porque ahí van los streaming.
   // =========================================================
 
   var PALABRAS_CATEGORIA = {
@@ -311,16 +312,18 @@
     mascotas: ["mascota", "perro", "gato", "veterinario", "veterinaria", "alimento perro", "arena gato", "petshop"],
     netflix: ["netflix"],
     youtube: ["youtube"],
-    otra_suscripcion: [],
+    otra_suscripcion: ["paramount", "hbo", "max", "disney", "star plus", "prime video", "amazon prime", "spotify", "apple tv", "apple music", "crunchyroll", "deezer", "icloud", "google one", "chatgpt", "suscripcion", "mensualidad", "gimnasio", "smart fit"],
     ropa: ["ropa", "polera", "polerón", "poleron", "pantalon", "jeans", "zapatilla", "zapato", "chaqueta", "parka", "calcetin", "zara", "h&m", "polo", "vestido", "falda", "bototo"],
     tecnologia: ["celular", "audifono", "audifonos", "cargador", "cable usb", "notebook", "computador", "mouse", "teclado", "pendrive", "tablet", "pilas", "parlante", "monitor", "impresora", "tinta", "pc factory", "samsung", "iphone", "xiaomi"],
     salud: ["medico", "doctor", "dentista", "consulta", "examen", "clinica", "kinesiologo", "psicologo", "lentes", "optica", "isapre", "fonasa", "bono"],
-    ocio: ["cine", "entrada", "concierto", "juego", "videojuego", "steam", "playstation", "bar", "cerveza", "copete", "carrete", "spotify", "disney", "prime video", "hbo", "max", "libro", "panorama"],
+    ocio: ["cine", "entrada", "concierto", "juego", "videojuego", "steam", "playstation", "bar", "cerveza", "copete", "carrete", "libro", "panorama"],
     restaurante: ["pizza", "sushi", "completo", "hamburguesa", "burger", "mcdonald", "kfc", "uber eats", "rappi", "pedidosya", "pedidos ya", "restaurante", "restaurant", "cafe", "starbucks", "empanada", "almuerzo", "once", "comida", "delivery", "churrasco", "papas fritas", "helado"],
     regalos: ["regalo", "cumpleaños", "cumpleanos", "navidad", "aniversario", "flores", "torta"],
     autos: ["neumatico", "mecanico", "taller", "lavado auto", "peaje", "tag", "autopista", "estacionamiento", "revision tecnica", "permiso de circulacion", "seguro auto", "aceite", "repuesto", "uber", "didi", "cabify"],
     otro_variable: []
   };
+
+  var CATEGORIAS_NO_SUGERIBLES = ["otro_fijo", "otro_variable"];
 
   function normalizarTexto(texto) {
     return String(texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -343,7 +346,7 @@
     var porFrase = {};
     var porPalabra = {};
     loadCompras().forEach(function (c) {
-      if (!c.descripcion || !c.categoria || CATEGORIAS_PROTEGIDAS.indexOf(c.categoria) !== -1) return;
+      if (!c.descripcion || !c.categoria || CATEGORIAS_NO_SUGERIBLES.indexOf(c.categoria) !== -1) return;
       var frase = normalizarTexto(c.descripcion);
       porFrase[frase] = porFrase[frase] || {};
       porFrase[frase][c.categoria] = (porFrase[frase][c.categoria] || 0) + 1;
@@ -391,7 +394,7 @@
 
     return Object.keys(puntaje)
       .map(function (id) { return categoriaById(id); })
-      .filter(function (c) { return c && !c.oculta && CATEGORIAS_PROTEGIDAS.indexOf(c.id) === -1; })
+      .filter(function (c) { return c && !c.oculta && CATEGORIAS_NO_SUGERIBLES.indexOf(c.id) === -1; })
       .sort(function (a, b) { return puntaje[b.id] - puntaje[a.id]; })
       .slice(0, maximo || 3);
   }
