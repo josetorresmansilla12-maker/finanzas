@@ -4839,3 +4839,109 @@ tr.compras-programados-sep td {
 .month-group-futuro summary {
   background: #eef0fb;
 }
+
+/* ---------- Compras ficticias ---------- */
+.ficticias-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ficticia-fila {
+  display: grid;
+  grid-template-columns: minmax(160px, 2fr) 150px 170px 30px;
+  gap: 8px;
+  align-items: center;
+}
+
+.ficticia-fila input,
+.ficticias-rango input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 1rem;
+  background: #fff;
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.ficticia-valor {
+  font-weight: 700;
+}
+
+.ficticias-rango {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.ficticias-rango input {
+  width: 72px;
+  height: 40px;
+}
+
+.ficticias-calendario {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(36px, 1fr));
+  gap: 6px;
+  max-width: 420px;
+  margin: 12px 0 8px;
+}
+
+.ficticias-cal-head {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.ficticias-dia {
+  aspect-ratio: 1;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ficticias-dia.hoy {
+  border-color: var(--color-primary);
+}
+
+.ficticias-dia.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.ficticias-titulo-field {
+  max-width: 420px;
+  margin-bottom: 8px;
+}
+
+.ficticia-marca {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .ficticia-fila {
+    grid-template-columns: 1fr 1fr 30px;
+  }
+  .ficticia-fila .ficticia-objeto {
+    grid-column: 1 / 3;
+  }
+  .ficticia-fila .reg-quitar {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

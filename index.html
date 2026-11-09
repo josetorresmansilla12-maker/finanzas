@@ -37,6 +37,7 @@
     <button type="button" class="tab-btn" id="tab-sueldo-btn" data-tab="sueldo">Mi Sueldo</button>
     <button type="button" class="tab-btn" id="tab-informes-btn" data-tab="informes">Informes</button>
     <button type="button" class="tab-btn" id="tab-calculadora-btn" data-tab="calculadora">Calculadora</button>
+    <button type="button" class="tab-btn" id="tab-ficticias-btn" data-tab="ficticias">🧪 Compras ficticias</button>
     <button type="button" class="tab-btn" id="tab-tarjetas-btn" data-tab="tarjetas">⚙️ Configuración</button>
   </nav>
 
@@ -1054,6 +1055,72 @@
       </div>
     </section>
 
+    <!-- ===================== TAB: COMPRAS FICTICIAS ===================== -->
+    <section id="tab-ficticias" class="tab-panel hidden">
+      <section class="form-section ficticias-form-section">
+        <h2>🧪 Compras ficticias</h2>
+        <p class="lede-hint">Anota objeto y valor (la fecha es opcional) y genera un comprobante con el mismo formato que los de la app. No se guarda nada: al salir de esta pestaña se borra todo.</p>
+
+        <div class="registro-bloque registro-bloque-compras">
+          <div class="registro-bloque-head">
+            <span class="registro-num">1</span>
+            <h3>🧾 Compras</h3>
+          </div>
+          <div id="ficticias-lista" class="ficticias-lista"></div>
+          <div class="registro-agregar">
+            <button type="button" id="ficticias-agregar-btn" class="btn btn-outline">➕ Agregar otra</button>
+          </div>
+        </div>
+
+        <div class="registro-bloque registro-bloque-dia">
+          <div class="registro-bloque-head">
+            <span class="registro-num">2</span>
+            <h3>📅 Días para las compras sin fecha</h3>
+          </div>
+          <p class="label-hint">Elige el mes y toca los días en que quieres que aparezcan. Las compras sin fecha se reparten entre esos días.</p>
+          <div class="registro-fila">
+            <input type="month" id="ficticias-mes" class="registro-control" aria-label="Mes" />
+            <div class="ficticias-rango">
+              <span>Del</span>
+              <input type="number" id="ficticias-rango-desde" min="1" max="31" placeholder="día" aria-label="Desde el día" />
+              <span>al</span>
+              <input type="number" id="ficticias-rango-hasta" min="1" max="31" placeholder="día" aria-label="Hasta el día" />
+              <button type="button" id="ficticias-rango-btn" class="btn btn-outline btn-small">Marcar rango</button>
+            </div>
+          </div>
+          <div class="registro-chips">
+            <button type="button" class="vista-chip" id="ficticias-todos-btn">Todos</button>
+            <button type="button" class="vista-chip" id="ficticias-habiles-btn">Lunes a viernes</button>
+            <button type="button" class="vista-chip" id="ficticias-ninguno-btn">Ninguno</button>
+          </div>
+          <div id="ficticias-calendario" class="ficticias-calendario"></div>
+          <span class="registro-dia-texto" id="ficticias-dias-texto"></span>
+        </div>
+
+        <div class="field ficticias-titulo-field">
+          <label for="ficticias-titulo">Título del comprobante <span class="label-hint">(opcional)</span></label>
+          <input type="text" id="ficticias-titulo" placeholder="Detalle de compras" />
+        </div>
+        <span class="error-msg" id="ficticias-error"></span>
+
+        <div class="form-actions">
+          <button type="button" id="ficticias-generar-btn" class="btn btn-primary">Generar comprobante</button>
+          <button type="button" id="ficticias-limpiar-btn" class="btn btn-secondary">Borrar todo</button>
+        </div>
+      </section>
+
+      <section class="table-section calculadora-resultado-section ficticias-resultado-section">
+        <div class="table-header">
+          <h2>Vista previa</h2>
+          <div class="table-actions">
+            <button type="button" id="ficticias-pdf-btn" class="btn btn-primary hidden">📄 Descargar PDF</button>
+          </div>
+        </div>
+        <p id="ficticias-vacio" class="empty-state">Agrega compras y toca "Generar comprobante".</p>
+        <div id="ficticias-resultado"></div>
+      </section>
+    </section>
+
     <!-- ===================== TAB: VER COMPRAS ===================== -->
     <section id="tab-vercompras" class="tab-panel hidden">
       <section class="form-section">
@@ -1194,6 +1261,7 @@
   <script src="js/juntas.js"></script>
   <script src="js/registro.js"></script>
   <script src="js/pdf.js"></script>
+  <script src="js/ficticias.js"></script>
   <script src="js/vercompras.js"></script>
   <script src="js/alerts.js"></script>
   <script src="js/backup.js"></script>

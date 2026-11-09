@@ -8,7 +8,7 @@
   // Juntas ya no es una pestaña aparte: vive como segundo modo dentro de la
   // Calculadora (ver mostrarModoCalculadora).
 
-  var TABS = ["compras", "avisos", "vercompras", "deudas", "deuda-tarjetas", "estadisticas", "sueldo", "informes", "calculadora", "tarjetas"];
+  var TABS = ["compras", "avisos", "vercompras", "deudas", "deuda-tarjetas", "estadisticas", "sueldo", "informes", "calculadora", "ficticias", "tarjetas"];
 
   function tabBtn(tab) { return document.getElementById("tab-" + tab + "-btn"); }
   function tabPanel(tab) { return document.getElementById("tab-" + tab); }
@@ -17,12 +17,18 @@
     TABS.forEach(function (t) { tabPanel(t).classList.toggle("hidden", t !== tab); });
   }
 
+  var tabActual = "compras";
+
   function activateTab(tab) {
     if (tab === "juntas") {
       activateTab("calculadora");
       mostrarModoCalculadora("juntas");
       return;
     }
+    // Compras ficticias no se guardan: al salir de esa pestaña se avisa
+    // que se borrarán, y si no se confirma, no se cambia de pestaña.
+    if (tabActual === "ficticias" && tab !== "ficticias" && !confirmarSalidaFicticias()) return;
+    tabActual = tab;
     TABS.forEach(function (t) { tabBtn(t).classList.toggle("active", t === tab); });
     showTabPanels(tab);
     // En el teléfono la barra de pestañas se desliza: se centra la activa
