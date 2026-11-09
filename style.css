@@ -4945,3 +4945,52 @@ tr.compras-programados-sep td {
     grid-row: 1;
   }
 }
+
+/* Compras ficticias: total parcial y reparto de un monto */
+.ficticias-total-parcial {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-tint);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.ficticias-total-parcial.falta {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.ficticias-total-parcial.ok {
+  background: #d8efe4;
+}
+
+.ficticias-repartir {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+}
+
+.ficticias-repartir-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ficticias-repartir-fila input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  flex: 1 1 200px;
+  max-width: 260px;
+}

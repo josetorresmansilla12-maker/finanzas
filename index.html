@@ -1070,6 +1070,18 @@
           <div class="registro-agregar">
             <button type="button" id="ficticias-agregar-btn" class="btn btn-outline">➕ Agregar otra</button>
           </div>
+          <div class="ficticias-total-parcial" id="ficticias-total-parcial"></div>
+
+          <div class="ficticias-repartir">
+            <span class="pw-label">💰 Repartir un monto entre las compras <span class="label-hint">(opcional)</span></span>
+            <div class="ficticias-repartir-fila">
+              <input type="number" id="ficticias-monto-total" min="0" step="1" inputmode="numeric" placeholder="Monto total, ej: 150000" aria-label="Monto total a repartir" />
+              <button type="button" id="ficticias-repartir-btn" class="btn btn-secondary btn-small">Repartir entre todas</button>
+              <button type="button" id="ficticias-repartir-vacias-btn" class="btn btn-outline btn-small">Repartir solo en las sin valor</button>
+              <button type="button" id="ficticias-cuadrar-btn" class="btn btn-outline btn-small">🧮 Cuadrar con el total</button>
+            </div>
+            <span class="label-hint">Después de repartir puedes cambiar cualquier valor para que sea razonable con el producto. "Cuadrar con el total" reparte la diferencia entre las compras que no tocaste a mano.</span>
+          </div>
         </div>
 
         <div class="registro-bloque registro-bloque-dia">

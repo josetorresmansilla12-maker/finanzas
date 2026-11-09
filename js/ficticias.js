@@ -27,6 +27,8 @@
   var ficticiasResultado = document.getElementById("ficticias-resultado");
   var ficticiasVacio = document.getElementById("ficticias-vacio");
   var ficticiasPdfBtn = document.getElementById("ficticias-pdf-btn");
+  var ficticiasTotalParcial = document.getElementById("ficticias-total-parcial");
+  var ficticiasMontoTotal = document.getElementById("ficticias-monto-total");
 
   var DIAS_CORTOS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
   var ficticiasDias = new Set(); // días del mes marcados (números)
@@ -48,6 +50,7 @@
     objeto.placeholder = "Objeto (ej: polerón)";
     objeto.setAttribute("aria-label", "Objeto");
     objeto.addEventListener("blur", function () { objeto.value = corregirOrtografia(objeto.value); });
+    objeto.addEventListener("input", actualizarTotalFicticias);
 
     var valor = document.createElement("input");
     valor.type = "number";
@@ -57,6 +60,12 @@
     valor.className = "ficticia-valor";
     valor.placeholder = "Valor $";
     valor.setAttribute("aria-label", "Valor");
+    // Un valor escrito a mano queda "ajustado": "Cuadrar con el total" ya
+    // no lo toca, solo reparte la diferencia entre los demás.
+    valor.addEventListener("input", function () {
+      row.dataset.ajustado = valor.value ? "1" : "";
+      actualizarTotalFicticias();
+    });
     // Enter en el valor de la última fila = otra fila.
     valor.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
@@ -78,6 +87,7 @@
     quitar.addEventListener("click", function () {
       row.remove();
       if (!filasFicticias().length) agregarFilaFicticia(false);
+      actualizarTotalFicticias();
     });
 
     row.appendChild(objeto);
@@ -86,7 +96,101 @@
     row.appendChild(quitar);
     ficticiasLista.appendChild(row);
     if (enfocar) objeto.focus();
+    actualizarTotalFicticias();
   }
+
+  // ---------- Total parcial y reparto de un monto ----------
+
+  function valorDe(row) {
+    return Number(row.querySelector(".ficticia-valor").value) || 0;
+  }
+
+  function filasConObjeto() {
+    return filasFicticias().filter(function (row) { return row.querySelector(".ficticia-objeto").value.trim(); });
+  }
+
+  // Total parcial en vivo; si hay un monto a repartir, cuánto falta o sobra.
+  function actualizarTotalFicticias() {
+    var filas = filasFicticias().filter(function (row) { return row.querySelector(".ficticia-objeto").value.trim() || valorDe(row); });
+    var suma = filas.reduce(function (s, row) { return s + valorDe(row); }, 0);
+    var meta = Number(ficticiasMontoTotal.value) || 0;
+    var texto = "Total parcial: " + formatCurrency(suma) + " · " + filas.length + (filas.length === 1 ? " compra" : " compras");
+    var clase = "";
+    if (meta > 0) {
+      var dif = meta - suma;
+      if (dif === 0) { texto += " · ✅ cuadra con " + formatCurrency(meta); clase = "ok"; }
+      else if (dif > 0) { texto += " · faltan " + formatCurrency(dif) + " para " + formatCurrency(meta); clase = "falta"; }
+      else { texto += " · sobran " + formatCurrency(-dif) + " sobre " + formatCurrency(meta); clase = "falta"; }
+    }
+    ficticiasTotalParcial.textContent = texto;
+    ficticiasTotalParcial.className = "ficticias-total-parcial" + (clase ? " " + clase : "");
+  }
+
+  // Reparte `monto` en partes parejas (redondeadas a $10) entre `filas`;
+  // la última se lleva el resto para que la suma sea exacta.
+  function repartirMonto(filas, monto) {
+    var n = filas.length;
+    var base = Math.floor(monto / n / 10) * 10;
+    filas.forEach(function (row, i) {
+      var v = i === n - 1 ? monto - base * (n - 1) : base;
+      row.querySelector(".ficticia-valor").value = String(v);
+      row.dataset.ajustado = "";
+    });
+    actualizarTotalFicticias();
+  }
+
+  function montoMeta() {
+    var meta = Number(ficticiasMontoTotal.value) || 0;
+    if (meta <= 0) {
+      showToast("Escribe primero el monto total a repartir.");
+      ficticiasMontoTotal.focus();
+    }
+    return meta;
+  }
+
+  document.getElementById("ficticias-repartir-btn").addEventListener("click", function () {
+    var meta = montoMeta();
+    if (!meta) return;
+    var filas = filasConObjeto();
+    if (!filas.length) { showToast("Escribe al menos un objeto para repartir el monto."); return; }
+    repartirMonto(filas, meta);
+    showToast(formatCurrency(meta) + " repartidos entre " + filas.length + (filas.length === 1 ? " compra." : " compras. Ajusta los que quieras."));
+  });
+
+  document.getElementById("ficticias-repartir-vacias-btn").addEventListener("click", function () {
+    var meta = montoMeta();
+    if (!meta) return;
+    var vacias = filasConObjeto().filter(function (row) { return !valorDe(row); });
+    if (!vacias.length) { showToast("Todas las compras ya tienen valor: usa \"Cuadrar con el total\"."); return; }
+    var usado = filasConObjeto().filter(function (row) { return valorDe(row); }).reduce(function (s, row) { return s + valorDe(row); }, 0);
+    var resto = meta - usado;
+    if (resto < vacias.length * 10) { showToast("No queda monto para las que no tienen valor: los demás ya suman " + formatCurrency(usado) + "."); return; }
+    repartirMonto(vacias, resto);
+    showToast(formatCurrency(resto) + " repartidos entre las " + vacias.length + " compras sin valor.");
+  });
+
+  // Después de ajustar algunos valores a mano: la diferencia con el total
+  // se reparte solo entre las compras que no se tocaron.
+  document.getElementById("ficticias-cuadrar-btn").addEventListener("click", function () {
+    var meta = montoMeta();
+    if (!meta) return;
+    var filas = filasConObjeto();
+    if (!filas.length) { showToast("Escribe al menos un objeto."); return; }
+    var suma = filas.reduce(function (s, row) { return s + valorDe(row); }, 0);
+    var dif = meta - suma;
+    if (dif === 0) { showToast("Ya cuadra con " + formatCurrency(meta) + "."); return; }
+    var libres = filas.filter(function (row) { return row.dataset.ajustado !== "1"; });
+    if (!libres.length) { showToast("Ajustaste todas a mano: deja alguna sin tocar o corrige un valor."); return; }
+    var sumaLibres = libres.reduce(function (s, row) { return s + valorDe(row); }, 0);
+    if (sumaLibres + dif < libres.length * 10) {
+      showToast("No alcanza: lo que ajustaste a mano ya suma más que el total. Baja algún valor.");
+      return;
+    }
+    repartirMonto(libres, sumaLibres + dif);
+    showToast("Listo: la diferencia (" + formatCurrency(Math.abs(dif)) + ") se repartió entre " + libres.length + (libres.length === 1 ? " compra." : " compras."));
+  });
+
+  ficticiasMontoTotal.addEventListener("input", actualizarTotalFicticias);
 
   function leerFicticias() {
     return filasFicticias().map(function (row) {
@@ -295,12 +399,14 @@
     ficticiasRangoDesde.value = "";
     ficticiasRangoHasta.value = "";
     ficticiasTitulo.value = "";
+    ficticiasMontoTotal.value = "";
     ficticiasError.textContent = "";
     ficticiasResultado.innerHTML = "";
     ficticiasVacio.classList.remove("hidden");
     ficticiasPdfBtn.classList.add("hidden");
     ficticiasGenerado = false;
     renderCalendarioFicticias();
+    actualizarTotalFicticias();
   }
 
   // Lo llama activateTab (tabs.js) antes de salir de esta pestaña.
